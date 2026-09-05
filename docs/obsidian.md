@@ -62,7 +62,13 @@ install Obsidian (https://obsidian.md), open or create a vault, and add the comm
 **Claudian** to chat with Claude Code inside the vault. Without Claudian you still get the mirrored
 notes, links and Dataview boards.
 
-## Phase B — proposal (DESIGN.md §20)
+## Phase B — implemented (DESIGN.md §20)
+
+Items 1–4 below are live: `council_context`, `DECISIONS.md` → MEMORY.md at plan, the `inbox/` round
+trip applied by `council_status`, and `council init --obsidian` (Claudian command kit + CLAUDE.md
+block in the vault). Item 5 (file links in the graph) remains open.
+
+### Original proposal
 
 1. **Vault as planning context.** `obsidian.read_context` lists vault notes (specs, ADRs, meeting
    notes) that `/council:plan` reads before writing cards; the planner cites which note drove which

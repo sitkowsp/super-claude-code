@@ -33,6 +33,8 @@ class ModelStats(BaseModel):
     consecutive_rejects: int = 0
     defects_after_merge: int = 0
     merged: int = 0
+    cooldown_until: str | None = None  # ISO time; model skipped by routing until then
+    fallbacks: int = 0  # times work was moved away from this model
 
 
 class Stats(BaseModel):
@@ -95,6 +97,10 @@ def on_defect(stats: Stats, model: str, policy: TrustPolicy) -> tuple[Trust, Tru
     if old != "probation":
         m.trust = _ORDER[_ORDER.index(old) - 1]
     return old, m.trust
+
+
+def in_cooldown(m: ModelStats, now: str) -> bool:
+    return bool(m.cooldown_until and m.cooldown_until > now)
 
 
 def diff_lines(diff_stat: str) -> int:

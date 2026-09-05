@@ -9,7 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from council_mcp import obsidian, probe, setup
+from council_mcp import obsidian, policy, probe, setup, vault
 from council_mcp.config import Privacy, Role, load
 from council_mcp.render import TEMPLATES
 
@@ -114,13 +114,32 @@ async def doctor(root: Path) -> int:
     return problems
 
 
+def _budget_line(root: Path) -> str:
+    """Budget warning for the prompt hook, at most once per 30 minutes."""
+    try:
+        cfg = load(root)
+    except Exception:  # noqa: BLE001
+        return ""
+    minutes = policy.session_minutes(root)
+    hint = policy.budget_hint(cfg.delegation, minutes)
+    if not hint:
+        return ""
+    marker = root / ".council" / ".budget_warned"
+    last = int(marker.read_text().strip() or 0) if marker.exists() else -999
+    if minutes - last < 30:
+        return ""
+    marker.write_text(str(minutes))
+    return hint
+
+
 def events(root: Path) -> str:
     """Brief of events newer than `.council/.last_seen_hook` (own marker, not council_status's)."""
     from council_mcp.store import TaskStore
 
     c = root / ".council"
+    budget = _budget_line(root) if (c / "council.json").exists() else ""
     if not (c / "events.jsonl").exists():
-        return ""
+        return budget
     store = TaskStore(root)
     marker = c / ".last_seen_hook"
     since = marker.read_text().strip() if marker.exists() else None
@@ -139,7 +158,7 @@ def events(root: Path) -> str:
         )
     ]
     if not evs:
-        return ""
+        return budget
     marker.write_text(evs[-1].ts if evs else "")
     lines = []
     for e in evs[-5:]:
@@ -148,7 +167,8 @@ def events(root: Path) -> str:
             detail = "; ".join(e.data.get("needs", [])) or detail
         lines.append(f"- {e.task} {e.type}" + (f": {str(detail)[:120]}" if detail else ""))
     more = f" (+{len(evs) - 5} more)" if len(evs) > 5 else ""
-    return "[council] new events" + more + " — run council_status for details:\n" + "\n".join(lines)
+    text = "[council] new events" + more + " — run council_status for details:\n" + "\n".join(lines)
+    return text + ("\n" + budget if budget else "")
 
 
 def report(root: Path) -> str:
@@ -223,6 +243,17 @@ async def setup_cmd(root: Path, install: bool) -> int:
     return 0
 
 
+def _hook_source() -> str:
+    """Claude Code passes hook input as JSON on stdin ({"source": "startup"|"resume"|...})."""
+    try:
+        if sys.stdin is None or sys.stdin.isatty():
+            return ""
+        raw = sys.stdin.read()
+        return str(json.loads(raw).get("source", "")) if raw.strip() else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def session_start(root: Path, plugin_dir: Path) -> str:
     """SessionStart hook: make sure .council exists (idempotent) and print a one-line status.
     Cheap: no model calls, no probing beyond `which`. Output goes into Claude's context."""
@@ -234,15 +265,32 @@ def session_start(root: Path, plugin_dir: Path) -> str:
         lines.append(
             f"[council] initialised {root.name}: {', '.join(done)} — edit .council/council.json"
         )
+    if _hook_source() == "startup":
+        policy.reset_session(root)
+    policy.session_started(root)
     try:
         cfg = load(root)
         checks = _asyncio.run(setup.check_all(cfg))
         lines.append(setup.brief(checks))
+        ready = [c.model for c in checks if c.installed and c.logged_in is not False and c.enabled]
+        rem = policy.reminder(cfg.delegation, ready)
+        if rem:
+            lines.append(rem)
+        hint = policy.budget_hint(cfg.delegation, policy.session_minutes(root))
+        if hint:
+            lines.append(hint)
         ob = obsidian.status(cfg.obsidian, root)
         if ob["obsidian_installed"] and ob["vault"]:
             lines.append(
                 f"[council] Obsidian vault: {ob['vault']}"
                 + ("" if ob["claudian"] else " (Claudian plugin not installed)")
+            )
+        pending = vault.inbox_read(cfg.obsidian, root)
+        if pending:
+            ids = ", ".join(str(p["task"]) for p in pending)
+            lines.append(
+                f"[council] answers waiting in the Obsidian inbox for {ids} — "
+                "call council_status to apply"
             )
         handoff = root / ".council" / "HANDOFF.md"
         if handoff.exists():
@@ -253,11 +301,20 @@ def session_start(root: Path, plugin_dir: Path) -> str:
 
 
 def main(argv: list[str] | None = None) -> None:
+    # Hook output is read by Claude Code as UTF-8; Windows consoles default to a legacy code page.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(prog="council")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p_init = sub.add_parser("init", help="bootstrap .council/ and .mcp.json in a repo")
     p_init.add_argument("--root", type=Path, default=Path.cwd())
     p_init.add_argument("--force", action="store_true")
+    p_init.add_argument(
+        "--obsidian",
+        action="store_true",
+        help="also write Claudian slash commands + CLAUDE.md block into the vault",
+    )
     p_doc = sub.add_parser("doctor", help="probe models and validate config")
     p_doc.add_argument("--root", type=Path, default=Path.cwd())
     p_ev = sub.add_parser("events", help="print a brief of new council events (hook)")
@@ -278,6 +335,10 @@ def main(argv: list[str] | None = None) -> None:
     if args.cmd == "init":
         for d in init(args.root.resolve(), plugin_dir, args.force):
             print(f"wrote {d}")
+        if args.obsidian:
+            cfg = load(args.root.resolve())
+            for w in vault.write_kit(cfg.obsidian, args.root.resolve()):
+                print(f"wrote vault kit: {w}")
         print("next: edit .council/council.json, then `council doctor`")
     elif args.cmd == "doctor":
         sys.exit(asyncio.run(doctor(args.root.resolve())))

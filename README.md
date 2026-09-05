@@ -105,12 +105,36 @@ defaults work with whatever executors `doctor` found. In Claude Code:
 | `council_verdict(task, ok, reason)` | `review_ok`, or reject → reason becomes ANSWER.md, attempt+1, re-dispatch |
 | `council_merge(ids?, force?)` | rebase + `merge --no-ff` in id order, `after_merge` gates, MEMORY.md line, cleanup |
 | `council_handoff(text)` | write `.council/HANDOFF.md` for the next session (mirrored to Obsidian) |
+| `council_obsidian(mirror?)` | vault status / mirror (see Obsidian section) |
 | `council_obsidian(mirror?)` | Obsidian vault detection, Claudian presence, mirror council notes |
 | `council_defect(task, description, lesson?)` | record a post-merge defect: demotes the model's trust, adds a lesson |
 | `council_stats` | per-model stats and trust (`probation` → `standard` → `trusted`), LESSONS.md tail |
 | `council_why(task)` | the task's history with every automatic decision and its reason |
 | `council_compare(prompt, models?, files?)` | same question to several models in parallel (bug-hunt, research) |
 | `council_playbooks(goal?, playbook?)` | list playbooks and pick the pattern for a goal (deterministic) |
+| `council_context` | planning context from the Obsidian vault (Plan, Decisions, #council/spec notes) |
+| `council_analyze(write?)` | deterministic repo scan → proposed gates, privacy rule, routing notes |
+| `council_should_delegate(role, est_lines, est_files?, touches_seams?, privacy?)` | token policy: self / delegate / ask |
+| `council_budget` | session clock vs Claude's usage window, offload hint |
+
+## Saving Claude tokens (the point of all this)
+
+Claude's usage window is the scarce resource; executors are paid for anyway. The plugin enforces a
+**delegation policy** (`delegation` in `council.json`, default `mode: auto`):
+
+- docs, assets, chores, review and data work always go to an executor;
+- any change of roughly 40+ lines or 2+ files goes to an executor; Claude keeps contracts,
+  integration, merge and small hotfixes;
+- borderline cases: Claude asks you once (`mode: ask` makes it always ask, `off` disables);
+- `council_should_delegate` gives the deterministic answer, and the SessionStart hook reminds
+  Claude of the policy every session;
+- after ~3.5 h of a session the hooks warn that the 5-hour window may end and `/council:offload`
+  turns the remaining work into executor tasks plus a handoff note, so the next session only
+  reviews and merges.
+
+If an executor runs out of quota, stops responding or is unavailable, the task is re-queued on the
+**fallback model** (`cheap` = `claude -p`, configurable) and the failing model gets a cooldown; the
+same fallback applies to `council_ask`.
 
 ## Who does what (default routing)
 
@@ -132,6 +156,15 @@ If Obsidian is installed, council finds your vault, prefers one that already con
 mirrors MEMORY/HANDOFF/LESSONS/TASKS, task cards (with frontmatter for Dataview) and reports into
 `<vault>/Council/<project>/`. With the **Claudian** plugin you can talk to Claude about the project
 from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obsidian.md).
+
+**The vault talks back (Phase B)**
+
+- Write `Council/<project>/Plan.md`, `DECISIONS.md` or notes tagged `#council/spec`; `/council:plan`
+  reads them (`council_context`) and cites them in cards. Bullets in `DECISIONS.md` are merged into the
+  repo's `MEMORY.md` at the next plan.
+- A `blocked` task creates `Council/<project>/inbox/T-007.md`; fill its `answer:` field in Obsidian
+  and the next `council_status` resumes the task. `council init --obsidian` installs Claudian slash
+  commands (`/council-status`, `/council-answer`, `/council-decide`, `/council-handoff`) in the vault.
 
 **Where to find your projects in Obsidian**
 

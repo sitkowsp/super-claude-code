@@ -213,5 +213,15 @@
     "folder": "Council",
     "mirror": true,
     "read_context": []
+  },
+  "fallback": {
+    "model": "cheap",
+    "on": [
+      "quota",
+      "no_response",
+      "unavailable"
+    ],
+    "cooldown_minutes": 60,
+    "max_fallbacks": 1
   }
 }

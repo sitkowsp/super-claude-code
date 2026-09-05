@@ -6,6 +6,8 @@ adapter.run → wait → finalize.
 from __future__ import annotations
 
 import asyncio
+import re
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from council_mcp import render, stats
@@ -19,6 +21,32 @@ from council_mcp.worktree import GitRepo
 
 log = get(__name__)
 BLOCKED_GRACE_S = 120  # §19.3: after `blocked` wait for the executor to exit on its own
+QUOTA_RE = re.compile(
+    r"429|rate.?limit|quota|usage limit|insufficient.credits|out of credits|too many requests|"
+    r"exceeded your|billing|403.*(credit|subscription|plan)|plan limit|capacity",
+    re.I,
+)
+UNAVAILABLE_RE = re.compile(
+    r"not on PATH|ENOTFOUND|ECONNREFUSED|connection refused|could not connect|"
+    r"503|502|service unavailable|not logged in|login required|unauthori[sz]ed|401",
+    re.I,
+)
+
+
+def classify_failure(exit_code: int | None, error: str | None, log_tail: str) -> str | None:
+    """quota | no_response | unavailable | None (a real task failure: keep it failed)."""
+    text = f"{error or ''}\n{log_tail}"
+    if QUOTA_RE.search(text):
+        return "quota"
+    if UNAVAILABLE_RE.search(text):
+        return "unavailable"
+    if error in ("budget exceeded", "cancelled"):
+        return None
+    if exit_code not in (0, None) and not log_tail.strip():
+        return "no_response"
+    if error and "timeout" in error.lower():
+        return "no_response"
+    return None
 
 
 class Scheduler:
@@ -56,6 +84,9 @@ class Scheduler:
                 )
             return task.assigned_to
         cands = self.cfg.candidates(task.role, task.privacy)
+        st = stats.load(self.root)
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        cands = [c for c in cands if not stats.in_cooldown(st.get(c), now)] or cands
         if not cands:
             raise ValueError(f"{task.id}: no model for role={task.role} privacy={task.privacy}")
         return cands[0]
@@ -166,6 +197,7 @@ class Scheduler:
             self.store.event(
                 tid, "failed", model=handle.model, reason=reason, exit_code=handle.exit_code
             )
+            await self._maybe_fallback(task, handle)
         elif task.state == "blocked":
             # persist the executor's last REPORT/ANSWER for the resume prompt
             d = self.root / ".council" / "reports" / tid
@@ -173,6 +205,68 @@ class Scheduler:
             if report.exists():
                 (d / "REPORT.md").write_text(report.read_text(encoding="utf-8"), encoding="utf-8")
         log.info("job_finished", task=tid, state=self.store.get(tid).state, exit=handle.exit_code)
+
+    def _log_tail(self, handle: RunHandle) -> str:
+        if handle.log_path and handle.log_path.exists():
+            try:
+                return handle.log_path.read_text(encoding="utf-8", errors="replace")[-4000:]
+            except OSError:
+                return ""
+        return ""
+
+    async def _maybe_fallback(self, task: Task, handle: RunHandle) -> bool:
+        """Quota / no response / unavailable → cooldown + re-queue on the fallback model."""
+        fb = self.cfg.fallback
+        kind = classify_failure(handle.exit_code, handle.error, self._log_tail(handle))
+        if kind is None or kind not in fb.on:
+            return False
+        st = stats.load(self.root)
+        m = st.get(handle.model, self.cfg.trust.initial)
+        until = datetime.now(UTC) + timedelta(minutes=fb.cooldown_minutes)
+        m.cooldown_until = until.isoformat(timespec="seconds")
+        m.fallbacks += 1
+        stats.save(self.root, st)
+        self.store.event(
+            task.id,
+            "cooldown",
+            model=handle.model,
+            actor="system",
+            reason=f"{kind}: cooldown {fb.cooldown_minutes} min",
+            until=m.cooldown_until,
+        )
+        target = fb.model
+        if (
+            not target
+            or target == handle.model
+            or target not in self.cfg.models
+            or not self.cfg.models[target].enabled
+            or task.privacy not in self.cfg.models[target].privacy
+            or task.fallbacks >= fb.max_fallbacks
+        ):
+            self.store.event(
+                task.id,
+                "fallback",
+                model=handle.model,
+                actor="system",
+                reason=f"{kind} but no fallback possible (target={target}); "
+                "Claude (orchestrator) should take this task",
+            )
+            return False
+        task = self.store.get(task.id)
+        task.fallbacks += 1
+        task.assigned_to = target
+        self.store.transition(task, "queued", reason=f"fallback from {handle.model}: {kind}")
+        self.store.event(
+            task.id,
+            "fallback",
+            model=target,
+            actor="system",
+            reason=f"{handle.model} {kind} → {target}",
+            from_model=handle.model,
+        )
+        self.jobs.pop(task.id, None)  # the current job is ending; let dispatch start a new one
+        self.dispatch([task.id])
+        return True
 
     async def reject(self, tid: str, reason: str) -> str:
         """Review rejected: attempt+1 (max 3), reason becomes ANSWER.md, re-dispatch."""

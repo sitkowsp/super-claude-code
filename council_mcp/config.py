@@ -14,6 +14,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from council_mcp.obsidian import ObsidianConfig
+from council_mcp.policy import DelegationPolicy
 from council_mcp.stats import TrustPolicy
 
 Role = Literal[
@@ -59,6 +60,19 @@ class ModelConfig(BaseModel):
         return expand_env(v) if isinstance(v, str) else v
 
 
+class Fallback(BaseModel):
+    """When an executor is out of quota, not responding or unavailable, re-queue the task on
+    `model` (default: the cheap Claude) and put the failing model on cooldown."""
+
+    model_config = ConfigDict(extra="forbid")
+    model: str | None = "cheap"
+    on: list[Literal["quota", "no_response", "unavailable"]] = Field(
+        default_factory=lambda: ["quota", "no_response", "unavailable"]  # type: ignore[arg-type,unused-ignore]
+    )
+    cooldown_minutes: int = 60
+    max_fallbacks: int = 1  # per task
+
+
 class Routing(BaseModel):
     model_config = ConfigDict(extra="forbid")
     by_privacy: dict[Privacy, list[str]] = Field(default_factory=dict)
@@ -80,6 +94,8 @@ class CouncilConfig(BaseModel):
     gates: dict[str, list[str]] = Field(default_factory=dict)
     trust: TrustPolicy = Field(default_factory=TrustPolicy)
     obsidian: ObsidianConfig = Field(default_factory=ObsidianConfig)
+    fallback: Fallback = Field(default_factory=Fallback)
+    delegation: DelegationPolicy = Field(default_factory=DelegationPolicy)
 
     @field_validator("models")
     @classmethod

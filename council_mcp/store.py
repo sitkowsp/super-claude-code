@@ -39,6 +39,8 @@ EventType = Literal[
     "trust_demoted",
     "defect",
     "compare",
+    "fallback",
+    "cooldown",
 ]
 Actor = Literal["claude", "system", "model"]
 
@@ -156,6 +158,7 @@ class Task(BaseModel):
     reports: int = 0
     violations: list[str] = Field(default_factory=list)
     reason: str | None = None  # why it is in its current state (§16.9)
+    fallbacks: int = 0  # how many times this task was moved to the fallback model
 
     def model_post_init(self, _ctx: Any) -> None:
         self.branch = self.branch or f"council/{self.id}"

@@ -26,7 +26,10 @@
   "never_share": [".env", ".env.*", "*.pem", "*.key", "*.sql", "secrets/**"],
   "memory_file": ".council/MEMORY.md",
   "gates": {"before_review": ["uv run pytest -q"], "after_merge": ["uv run pytest -q"]},
-  "trust": {"promote_after": 3, "demote_after": 2, "probation_max_lines": 150, "initial": "probation"}
+  "trust": {"promote_after": 3, "demote_after": 2, "probation_max_lines": 150, "initial": "probation"},
+  "fallback": {"model": "cheap", "on": ["quota", "no_response", "unavailable"], "cooldown_minutes": 60, "max_fallbacks": 1},
+  "delegation": {"mode": "auto", "min_lines": 40, "min_files": 2, "warn_after_minutes": 210, "session_budget_minutes": 300},
+  "obsidian": {"vault": null, "folder": "Council", "mirror": true, "read_context": []}
 }
 ```
 
@@ -91,7 +94,12 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_defect` | task, description, lesson? | post-merge defect: trust down, lesson |
 | `council_stats` | – | trust table, counters, LESSONS tail |
 | `council_why` | task | history with reasons |
-| `council_handoff` | text | write HANDOFF.md |
+| `council_handoff` | text | write HANDOFF.md (+ Obsidian mirror) |
+| `council_obsidian` | mirror? | vault detection / mirror |
+| `council_context` | – | vault planning notes |
+| `council_analyze` | write? | deterministic repo scan, proposed gates |
+| `council_should_delegate` | role, est_lines, est_files?, touches_seams?, privacy? | delegate / self / ask |
+| `council_budget` | – | session minutes, offload hint |
 
 ## CLI
 
@@ -106,7 +114,7 @@ council report [--root DIR] [--out F]  one-page Markdown report: tasks, reviews,
 
 `/council:ask`, `/council:plan`, `/council:run`, `/council:status`, `/council:answer`,
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
-`/council:defect`, `/council:handoff`. Subagents: `council-planner`, `council-reviewer`,
+`/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`. Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables

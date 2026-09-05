@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from council_mcp.log import get
@@ -29,6 +30,7 @@ class Watcher:
         self.git = git
         self.interval = interval_s
         self._mtimes: dict[str, float] = {}
+        self.on_blocked: Callable[[Task, Report], None] | None = None
         self._invalid: dict[str, int] = {}
         self._task: asyncio.Task[None] | None = None
 
@@ -146,6 +148,11 @@ class Watcher:
             self.store.event(
                 task.id, "blocked", model=task.assigned_to, actor="model", needs=rep.needs
             )
+            if self.on_blocked:
+                try:
+                    self.on_blocked(task, rep)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("on_blocked_failed", task=task.id, error=str(e))
         elif rep.status == "failed":
             self.store.transition(task, "failed", reason=rep.body[:300])
             self.store.event(
