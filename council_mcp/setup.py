@@ -15,6 +15,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import httpx
 from pydantic import BaseModel
 
 from council_mcp.config import CouncilConfig
@@ -180,7 +181,38 @@ async def check_all(cfg: CouncilConfig) -> list[Check]:
     return out
 
 
-def apply_probe(checks: list[Check], errors: dict[str, str | None]) -> list[Check]:
+_NOT_CHAT = ("bge", "embed", "ocr", "vl", "vision", "whisper", "rerank", "clip")
+_PREFER = ("qwen3-coder", "coder", "qwen3", "qwen2.5", "qwen", "llama", "mistral", "gemma")
+
+
+def pick_ollama_model(available: list[str], wanted: str | None = None) -> str | None:
+    """Choose a pulled chat/tool model deterministically: the configured one if present, else by
+    family preference (coder > qwen3 > ...), skipping embedding / vision / OCR models."""
+    if wanted and wanted in available:
+        return wanted
+    chat = [m for m in available if not any(x in m.lower() for x in _NOT_CHAT)]
+    for pref in _PREFER:
+        hit = sorted((m for m in chat if pref in m.lower()), key=lambda m: ("/" in m, m))
+        if hit:
+            return hit[0]
+    return chat[0] if chat else None
+
+
+def list_ollama_models(url: str, timeout: float = 2.0) -> list[str]:
+    """Names of pulled models at an Ollama URL; [] when unreachable (never raises)."""
+    try:
+        r = httpx.get(url.rstrip("/") + "/api/tags", timeout=timeout)
+        r.raise_for_status()
+        return [m["name"] for m in r.json().get("models", [])]
+    except Exception:
+        return []
+
+
+def apply_probe(
+    checks: list[Check],
+    errors: dict[str, str | None],
+    available: dict[str, list[str]] | None = None,
+) -> list[Check]:
     """Merge probe errors into the doctor table: an executor that is installed and logged in but
     failed the availability probe (e.g. Ollama model not pulled) must not read as `ready`."""
     for c in checks:
@@ -188,7 +220,12 @@ def apply_probe(checks: list[Check], errors: dict[str, str | None]) -> list[Chec
         if err and c.enabled and not c.action:
             hint = ""
             if c.adapter == "ollama" and "not pulled" in err:
-                hint = " (ollama pull <model>)"
+                pick = pick_ollama_model((available or {}).get(c.model, []))
+                hint = (
+                    f" (set models.{c.model}.model to a pulled one, e.g. {pick})"
+                    if pick
+                    else " (ollama pull <model>)"
+                )
             c.action = f"probe failed: {err}{hint}"
             c.enabled = False
     return checks

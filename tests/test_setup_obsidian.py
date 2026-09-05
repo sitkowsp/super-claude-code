@@ -43,6 +43,17 @@ def test_apply_probe_marks_failed_probe() -> None:
     assert "| local | ollama | yes | ? | probe failed" in setup.render(out)
 
 
+def test_pick_ollama_model_prefers_coder_and_skips_embeddings() -> None:
+    avail = ["bge-m3:latest", "hf.co/x/Qwen3.8-27B:Q4", "qwen2.5vl:7b", "qwen3:8b", "qwen2.5:14b"]
+    assert setup.pick_ollama_model(avail, "qwen3-coder:30b") == "qwen3:8b"
+    assert (
+        setup.pick_ollama_model(avail + ["qwen3-coder:30b"], "qwen3-coder:30b") == "qwen3-coder:30b"
+    )
+    assert setup.pick_ollama_model(["x-coder:1b", "qwen3:8b"]) == "x-coder:1b"
+    assert setup.pick_ollama_model(["bge-m3:latest"]) is None
+    assert setup.list_ollama_models("http://127.0.0.1:9", timeout=0.2) == []
+
+
 def test_detect_vaults_and_resolve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(obsidian.ENV_VAULT, raising=False)  # the developer's machine may set it
     vault = tmp_path / "Vault"

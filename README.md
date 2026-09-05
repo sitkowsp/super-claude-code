@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc8-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc9-orange.svg">
 </p>
 
 ```
@@ -150,7 +150,8 @@ you open the clone itself as a project that entry shows as skipped — expected.
 
 ### Executors
 
-- **Ollama** (local or remote) with a tool-capable model — `qwen3:8b` works on a laptop
+- **Ollama** (local or remote) with a tool-capable model — `qwen3:8b` works on a laptop; `init` picks a
+  model you already pulled (coder > qwen3 > …, skipping embedding/vision models) if the default is missing
 - **ChatGPT Codex** — `npm i -g @openai/codex`, `codex login` (generates PNGs)
 - **GitHub Copilot** — `npm i -g @github/copilot`, `gh auth login`
 - **Grok Build** — `npm i -g @xai-official/grok`, `grok login`

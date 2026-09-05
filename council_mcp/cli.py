@@ -35,6 +35,28 @@ MCP_JSON = {
 }
 
 
+def adopt_ollama_model(cfg_path: Path) -> str | None:
+    """If the configured Ollama model is not pulled but others are, switch the config to one that
+    is (deterministic preference, see setup.pick_ollama_model). Returns the new name or None."""
+    import os
+
+    data = json.loads(cfg_path.read_text(encoding="utf-8"))
+    for m in data.get("models", {}).values():
+        if m.get("adapter") != "ollama":
+            continue
+        url = os.environ.get("COUNCIL_OLLAMA_URL") or "http://localhost:11434"
+        available = setup.list_ollama_models(url)
+        if not available or m.get("model") in available:
+            return None
+        pick = setup.pick_ollama_model(available, m.get("model"))
+        if not pick:
+            return None
+        m["model"] = pick
+        cfg_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        return pick
+    return None
+
+
 def init(root: Path, plugin_dir: Path, force: bool = False) -> list[str]:
     done = []
     c = root / ".council"
@@ -46,7 +68,11 @@ def init(root: Path, plugin_dir: Path, force: bool = False) -> list[str]:
         dst = c / name
         if force or not dst.exists():
             shutil.copy2(src, dst)
-            done.append(str(dst.relative_to(root)))
+            done.append(dst.relative_to(root).as_posix())
+    if ".council/council.json" in done:
+        chosen = adopt_ollama_model(c / "council.json")
+        if chosen:
+            done.append(f"council.json: local model -> {chosen}")
     mem = c / "MEMORY.md"
     if not mem.exists():
         mem.write_text("# Project memory\n\n## Decyzje\n\n## Konwencje\n", encoding="utf-8")

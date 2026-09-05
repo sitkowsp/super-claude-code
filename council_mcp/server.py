@@ -830,7 +830,9 @@ async def council_doctor() -> dict[str, Any]:
     rt.reset()
     caps = await rt.caps()
     checks = setup.apply_probe(
-        await setup.check_all(cfg), {k: v.error for k, v in caps.models.items()}
+        await setup.check_all(cfg),
+        {k: v.error for k, v in caps.models.items()},
+        {k: list(v.models) for k, v in caps.models.items()},
     )
     gaps = []
     for role in ("implement", "review", "docs", "chores"):
