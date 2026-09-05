@@ -44,6 +44,12 @@ Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`
 /plugin install council@super-claude-code
 ```
 
+> **Restart the Claude Code desktop app (or your terminal session) after installing `uv`, Node.js,
+> any executor CLI, or the plugin itself.** A running Claude Code process keeps the environment it
+> was started with, so new PATH entries (uv, `agy`, npm CLIs) and variables like
+> `COUNCIL_OBSIDIAN_VAULT` are invisible to it until it restarts. The symptom of skipping this is
+> "council MCP server: CONNECTION_CLOSED" or commands that say `uv` is not found.
+
 Open any project. On the first session the plugin initialises `.council/` for you and prints which
 executors are ready and which need one command. Then:
 

@@ -33,6 +33,12 @@ Requirements: Python 3.12, [`uv`](https://docs.astral.sh/uv/) and `git` on PATH.
 
 You do not need all of them. Models that are missing are disabled automatically.
 
+**Then restart Claude Code.** Installing `uv`, Node.js or any CLI changes your PATH, and adding a
+vault sets `COUNCIL_OBSIDIAN_VAULT`. A Claude Code process that is already running does not see
+those changes; the plugin's MCP server would fail to start (`CONNECTION_CLOSED`) and hooks would
+report `uv` missing. Close the desktop app (or the terminal running `claude`) and open it again
+before step 3. If you cannot restart, set `COUNCIL_UV` to the full path of `uv` for that session.
+
 ## 3. Initialise a project
 
 With the plugin installed, just open the project in Claude Code: the SessionStart hook runs
