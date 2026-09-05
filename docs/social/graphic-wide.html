@@ -35,9 +35,9 @@
   .m .t{font-size:20px;font-weight:600}
   .m .s{font-size:14px;color:var(--muted)}
   .m.head{background:linear-gradient(90deg,rgba(224,122,69,.25),rgba(224,122,69,.08));border-color:rgba(224,122,69,.5)}
-  .foot{position:absolute;left:64px;right:64px;bottom:48px;display:flex;justify-content:space-between;align-items:flex-end}
-  .cmd{font-family:Consolas,"Cascadia Mono",monospace;font-size:22px;color:#cfe7ff;background:rgba(0,0,0,.35);
-    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 18px}
+  .foot{position:absolute;left:64px;right:64px;bottom:48px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+  .cmd{font-family:Consolas,"Cascadia Mono",monospace;font-size:20px;line-height:1.35;white-space:nowrap;color:#cfe7ff;background:rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 16px}
   .cmd span{color:#7fb4ff}
   .brand{text-align:right;color:var(--muted);font-size:18px;line-height:1.4}
   .brand b{color:var(--ink);font-size:22px;letter-spacing:.02em}
@@ -68,7 +68,10 @@
   </div>
 
   <div class="foot">
-    <div class="cmd"><span>/plugin</span> install council@super-claude-code</div>
+    <div class="cmd">
+      <div><span>/plugin</span> marketplace add sitkowsp/super-claude-code</div>
+      <div><span>/plugin</span> install council@super-claude-code</div>
+    </div>
     <div class="brand"><b>super-claude-code</b><br>github.com/sitkowsp/super-claude-code</div>
   </div>
 </div>
