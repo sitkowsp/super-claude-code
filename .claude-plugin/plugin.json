@@ -8,7 +8,11 @@
   "license": "MIT",
   "commands": "./commands",
   "mcpServers": "./.mcp.json",
-  "agents": "./agents",
+  "agents": [
+    "./agents/council-planner.md",
+    "./agents/council-reviewer.md",
+    "./agents/council-integrator.md"
+  ],
   "hooks": "./hooks/hooks.json",
   "displayName": "Council",
   "homepage": "https://github.com/sitkowsp/super-claude-code",
