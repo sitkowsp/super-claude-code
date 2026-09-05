@@ -20,7 +20,7 @@
       "first_pass_ok": 0,
       "consecutive_rejects": 0,
       "defects_after_merge": 0,
-      "merged": 0,
+      "merged": 1,
       "cooldown_until": null,
       "fallbacks": 0
     }

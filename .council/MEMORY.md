@@ -1,1 +1,2 @@
 - 2026-09-05T17:00:12+00:00 T-001: Social graphics: two-line install block (marketplace add first, then plugin install) + re-render PNGs (codex, da7dbe4)
+- 2026-09-05T17:00:36+00:00 T-002: Social posts: copy-paste Facebook and Instagram text with both install lines, link in comments (copilot, 89cb594)

@@ -1,0 +1,27 @@
+{
+  "stage": "after_merge",
+  "ok": true,
+  "results": [
+    {
+      "cmd": "uv run ruff check .",
+      "ok": true,
+      "exit_code": 0,
+      "duration_s": 0.1,
+      "output": "warning: `VIRTUAL_ENV=C:\\Users\\p.sitkowski\\.claude\\plugins\\cache\\super-claude-code\\council\\1.0.0-rc9\\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nAll checks passed!\n"
+    },
+    {
+      "cmd": "uv run mypy",
+      "ok": true,
+      "exit_code": 0,
+      "duration_s": 0.6,
+      "output": "warning: `VIRTUAL_ENV=C:\\Users\\p.sitkowski\\.claude\\plugins\\cache\\super-claude-code\\council\\1.0.0-rc9\\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nSuccess: no issues found in 24 source files\r\n"
+    },
+    {
+      "cmd": "uv run pytest -q",
+      "ok": true,
+      "exit_code": 0,
+      "duration_s": 20.6,
+      "output": "warning: `VIRTUAL_ENV=C:\\Users\\p.sitkowski\\.claude\\plugins\\cache\\super-claude-code\\council\\1.0.0-rc9\\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n..............................................................           [100%]\r\n============================== warnings summary ===============================\r\ntests/test_review_merge.py::test_reject_redispatches_then_fails_after_max\r\n  C:\\Users\\p.sitkowski\\WORKSPACE\\super-cc-plugin\\.venv\\Lib\\site-packages\\_pytest\\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x000001EE0E5699E0>\r\n  \r\n  Traceback (most recent call last):\r\n    File \"C:\\Users\\p.sitkowski\\AppData\\Local\\Python\\pythoncore-3.12-64\\Lib\\asyncio\\base_subprocess.py\", line 125, in __del__\r\n      _warn(f\"unclosed transport {self!r}\", ResourceWarning, source=self)\r\n                                 ^^^^^^^^\r\n    File \"C:\\Users\\p.sitkowski\\AppData\\Local\\Python\\pythoncore-3.12-64\\Lib\\asyncio\\base_subprocess.py\", line 80, in __repr__\r\n      info.append(f'stderr={stderr.pipe}')\r\n                           ^^^^^^^^^^^^^\r\n    File \"C:\\Users\\p.sitkowski\\AppData\\Local\\Python\\pythoncore-3.12-64\\Lib\\asyncio\\proactor_events.py\", line 80, in __repr__\r\n      info.append(f'fd={self._sock.fileno()}')\r\n                        ^^^^^^^^^^^^^^^^^^^\r\n    File \"C:\\Users\\p.sitkowski\\AppData\\Local\\Python\\pythoncore-3.12-64\\Lib\\asyncio\\windows_utils.py\", line 102, in fileno\r\n      raise ValueError(\"I/O operation on closed pipe\")\r\n  ValueError: I/O operation on closed pipe\r\n  \r\n  Enable tracemalloc to get traceback where the object was allocated.\r\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\r\n    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n62 passed, 1 warning in 19.68s\r\n"
+    }
+  ]
+}

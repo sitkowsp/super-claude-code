@@ -18,14 +18,14 @@
   ],
   "depends_on": [],
   "assigned_to": "copilot",
-  "state": "review",
+  "state": "merged",
   "attempt": 3,
   "branch": "council/T-002",
   "worktree": ".council/worktrees/T-002",
   "workdir": ".council/work/T-002",
   "created": "2026-09-05T16:47:03+00:00",
   "started": "2026-09-05T16:47:09+00:00",
-  "finished": "2026-09-05T16:53:44+00:00",
+  "finished": "2026-09-05T17:00:36+00:00",
   "last_report": {
     "task": "T-002",
     "status": "done",
@@ -43,6 +43,6 @@
   },
   "reports": 4,
   "violations": [],
-  "reason": "review_ok",
+  "reason": "merge 89cb594",
   "fallbacks": 0
 }
