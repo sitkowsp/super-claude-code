@@ -9,7 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from council_mcp import probe
+from council_mcp import obsidian, probe, setup
 from council_mcp.config import Privacy, Role, load
 from council_mcp.render import TEMPLATES
 
@@ -25,6 +25,7 @@ MCP_JSON = {
         "council": {
             "command": "uv",
             "args": ["run", "--directory", "${COUNCIL_PLUGIN_DIR}", "council-mcp"],
+            "comment": "written by `council init`; a plugin install uses the plugin's .mcp.json",
             "env": {
                 "COUNCIL_REPO_ROOT": "${CLAUDE_PROJECT_DIR}",
                 "COUNCIL_OLLAMA_URL": "http://localhost:11434",
@@ -90,6 +91,18 @@ async def doctor(root: Path) -> int:
             f"{'OK  ' if c.enabled else 'OFF '} {name:8s} {c.adapter:10s} "
             f"{c.version or ''} {c.error or ''}"
         )
+    print()
+    print(setup.render(await setup.check_all(cfg)))
+    print()
+    ob = obsidian.status(cfg.obsidian, root)
+    if ob["obsidian_installed"]:
+        where = "repo is inside the vault" if ob["repo_inside_vault"] else f"mirror → {ob['vault']}"
+        print(
+            f"Obsidian: vault {ob['vault']} ({where}); Claudian plugin: "
+            f"{'yes' if ob['claudian'] else 'no — install it in Obsidian for chat-in-vault'}"
+        )
+    else:
+        print("Obsidian: not detected (optional; see docs/obsidian.md)")
     roles: list[Role] = ["implement", "review", "docs", "chores"]
     privacies: list[Privacy] = ["public", "internal", "local-only"]
     for role in roles:
@@ -191,6 +204,54 @@ def report(root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+async def setup_cmd(root: Path, install: bool) -> int:
+    cfg = load(root)
+    checks = await setup.check_all(cfg)
+    print(setup.render(checks))
+    cmds = await setup.install_missing(cfg, dry_run=not install)
+    if cmds:
+        print("\n" + ("Installing:" if install else "Would install (re-run with --install):"))
+        for line in cmds:
+            print("  " + line)
+    logins = [c for c in checks if c.installed and c.logged_in is False]
+    if logins or not install:
+        print("\nLogins are done by you (they open a browser):")
+        for c in checks:
+            ex = setup.CATALOG.get(c.adapter)
+            if ex and c.enabled and c.logged_in is not True and c.adapter not in ("ollama",):
+                print(f"  {c.model:12s} {ex.login}")
+    return 0
+
+
+def session_start(root: Path, plugin_dir: Path) -> str:
+    """SessionStart hook: make sure .council exists (idempotent) and print a one-line status.
+    Cheap: no model calls, no probing beyond `which`. Output goes into Claude's context."""
+    import asyncio as _asyncio
+
+    lines = []
+    if not (root / ".council" / "council.json").exists():
+        done = init(root, plugin_dir)
+        lines.append(
+            f"[council] initialised {root.name}: {', '.join(done)} — edit .council/council.json"
+        )
+    try:
+        cfg = load(root)
+        checks = _asyncio.run(setup.check_all(cfg))
+        lines.append(setup.brief(checks))
+        ob = obsidian.status(cfg.obsidian, root)
+        if ob["obsidian_installed"] and ob["vault"]:
+            lines.append(
+                f"[council] Obsidian vault: {ob['vault']}"
+                + ("" if ob["claudian"] else " (Claudian plugin not installed)")
+            )
+        handoff = root / ".council" / "HANDOFF.md"
+        if handoff.exists():
+            lines.append("[council] HANDOFF.md exists — read it first (council_status returns it)")
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"[council] config problem: {e}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="council")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -201,6 +262,14 @@ def main(argv: list[str] | None = None) -> None:
     p_doc.add_argument("--root", type=Path, default=Path.cwd())
     p_ev = sub.add_parser("events", help="print a brief of new council events (hook)")
     p_ev.add_argument("--root", type=Path, default=Path.cwd())
+    p_set = sub.add_parser("setup", help="check executors; --install installs missing npm CLIs")
+    p_set.add_argument("--root", type=Path, default=Path.cwd())
+    p_set.add_argument("--install", action="store_true")
+    p_ss = sub.add_parser("session-start", help="hook: init if needed + one-line status")
+    p_ss.add_argument("--root", type=Path, default=Path.cwd())
+    p_ob = sub.add_parser("obsidian", help="show vault detection or mirror council state into it")
+    p_ob.add_argument("--root", type=Path, default=Path.cwd())
+    p_ob.add_argument("--mirror", action="store_true")
     p_rep = sub.add_parser("report", help="one-page Markdown report (tasks, reviews, trust, time)")
     p_rep.add_argument("--root", type=Path, default=Path.cwd())
     p_rep.add_argument("--out", type=Path, default=None, help="write to file instead of stdout")
@@ -216,6 +285,17 @@ def main(argv: list[str] | None = None) -> None:
         brief = events(args.root.resolve())
         if brief:
             print(brief)
+    elif args.cmd == "setup":
+        sys.exit(asyncio.run(setup_cmd(args.root.resolve(), args.install)))
+    elif args.cmd == "session-start":
+        out = session_start(args.root.resolve(), plugin_dir)
+        if out:
+            print(out)
+    elif args.cmd == "obsidian":
+        cfg = load(args.root.resolve())
+        print(json.dumps(obsidian.status(cfg.obsidian, args.root.resolve()), indent=2))
+        if args.mirror:
+            print("mirrored to:", obsidian.mirror(args.root.resolve(), cfg.obsidian))
     elif args.cmd == "report":
         text = report(args.root.resolve())
         if args.out:

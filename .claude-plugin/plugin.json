@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Delegate disjoint tasks to other providers' models (Ollama, Codex, Copilot, Gemini, claude -p) working in isolated copies of this repo; Claude plans, reviews and merges.",
   "author": {
     "name": "Pawel Sitkowski"
@@ -9,5 +9,8 @@
   "commands": "./commands",
   "mcpServers": "./.mcp.json",
   "agents": "./agents",
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "displayName": "Council",
+  "homepage": "https://github.com/sitkowsp/super-claude-code",
+  "repository": "https://github.com/sitkowsp/super-claude-code"
 }

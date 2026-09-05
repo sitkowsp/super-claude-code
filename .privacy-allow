@@ -1,0 +1,3 @@
+# regexes for legitimate matches (one per line)
+^noreply@anthropic\.com$
+^council@localhost$

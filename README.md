@@ -33,6 +33,37 @@ Executors never touch git and never see files matching `never_share`. Files outs
 `scope` are never copied back (`scope_violation`). Everything an executor writes is data, not
 instructions.
 
+## Install (2 minutes)
+
+Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`](https://docs.astral.sh/uv/), `git`, Node.js (for the npm CLIs).
+
+**As a Claude Code plugin** — in Claude Code:
+
+```
+/plugin marketplace add sitkowsp/super-claude-code
+/plugin install council@super-claude-code
+```
+
+Open any project. On the first session the plugin initialises `.council/` for you and prints which
+executors are ready and which need one command. Then:
+
+```bash
+council setup --install     # installs missing npm CLIs (Codex, Copilot); prints login commands
+council doctor              # full table: installed / logged in / action, Obsidian status
+```
+
+Logins are the only manual step and each opens a browser: `codex login` (ChatGPT), `gh auth login`
+(Copilot), `agy` once (Google, Antigravity). Ollama needs no login.
+
+**From a clone** (development, or without the plugin system):
+
+```bash
+git clone https://github.com/sitkowsp/super-claude-code && cd super-claude-code && uv sync
+cd /path/to/your/project
+uv run --directory /path/to/super-claude-code council init
+uv run --directory /path/to/super-claude-code council doctor
+```
+
 ## Requirements
 
 - Python 3.12 and [`uv`](https://docs.astral.sh/uv/) on PATH; git
@@ -47,15 +78,8 @@ instructions.
 
 ## Quick start
 
-```bash
-git clone <this repo> && cd super-claude-code && uv sync
-cd /path/to/your/project
-uv run --directory /path/to/super-claude-code council init      # writes .council/, .mcp.json
-uv run --directory /path/to/super-claude-code council doctor    # probes models, validates config
-```
-
-Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLAMA_URL` in
-`.mcp.json` if you use Ollama, open the project in Claude Code and try:
+Edit `.council/council.json` only if you want to (models, routing, `never_share`, gates); the
+defaults work with whatever executors `doctor` found. In Claude Code:
 
 ```
 /council:ask codex "review council_mcp/config.py for pydantic mistakes" --files council_mcp/config.py
@@ -79,7 +103,8 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 | `council_review(task)` | review package: card, report, flags, diff, `before_review` gate results |
 | `council_verdict(task, ok, reason)` | `review_ok`, or reject → reason becomes ANSWER.md, attempt+1, re-dispatch |
 | `council_merge(ids?, force?)` | rebase + `merge --no-ff` in id order, `after_merge` gates, MEMORY.md line, cleanup |
-| `council_handoff(text)` | write `.council/HANDOFF.md` for the next session |
+| `council_handoff(text)` | write `.council/HANDOFF.md` for the next session (mirrored to Obsidian) |
+| `council_obsidian(mirror?)` | Obsidian vault detection, Claudian presence, mirror council notes |
 | `council_defect(task, description, lesson?)` | record a post-merge defect: demotes the model's trust, adds a lesson |
 | `council_stats` | per-model stats and trust (`probation` → `standard` → `trusted`), LESSONS.md tail |
 | `council_why(task)` | the task's history with every automatic decision and its reason |
@@ -99,6 +124,13 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 Raster images: Codex CLI (ChatGPT login) and Antigravity CLI (Google login) both have built-in image
 tools — verified live, see `docs/research-*.md`. Both save to their own scratch folder by default, so
 the task prompt names the workdir explicitly. Copilot CLI has none. Override any card with `assigned_to`.
+
+## Obsidian (optional)
+
+If Obsidian is installed, council finds your vault, prefers one that already contains the repo, and
+mirrors MEMORY/HANDOFF/LESSONS/TASKS, task cards (with frontmatter for Dataview) and reports into
+`<vault>/Council/<project>/`. With the **Claudian** plugin you can talk to Claude about the project
+from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obsidian.md).
 
 ## Trust, lessons, playbooks
 
@@ -137,7 +169,8 @@ uv run ruff format . && uv run ruff check .
 uv run mypy
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same gates on Ubuntu and Windows. See
+CI runs the same gates on Ubuntu and Windows plus `scripts/privacy_check.py` (no user paths,
+private IPs, e-mails or tokens in tracked files). See
 [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## License

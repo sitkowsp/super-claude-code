@@ -16,7 +16,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from council_mcp import __version__, gates, globs, playbooks, probe, stats
+from council_mcp import __version__, gates, globs, obsidian, playbooks, probe, stats
 from council_mcp.adapters import make
 from council_mcp.config import CouncilConfig, load
 from council_mcp.log import configure, get
@@ -190,6 +190,7 @@ async def council_plan(tasks: list[dict[str, Any]]) -> dict[str, Any]:
             title=t.title,
             scope=t.scope,
         )
+    _mirror()
     return {"created": [t.id for t in created], "board": store.render_tasks_md()}
 
 
@@ -469,6 +470,8 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
                 {"task": "(rest)", "reason": f"after_merge gates failed on {tid}; stopped"}
             )
             break
+    if merged:
+        _mirror()
     return {"merged": merged, "skipped": skipped, "board": store.render_tasks_md()}
 
 
@@ -479,7 +482,28 @@ async def council_handoff(text: str) -> dict[str, Any]:
     p = rt.root / ".council" / "HANDOFF.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text.strip() + "\n", encoding="utf-8")
-    return {"path": str(p), "chars": len(text)}
+    mirrored = _mirror()
+    return {"path": str(p), "chars": len(text), "obsidian": mirrored}
+
+
+def _mirror() -> str | None:
+    try:
+        target = obsidian.mirror(rt.root, rt.cfg.obsidian)
+        return str(target) if target else None
+    except Exception as e:  # noqa: BLE001
+        log.warning("obsidian_mirror_failed", error=str(e))
+        return None
+
+
+@mcp.tool()
+async def council_obsidian(mirror: bool = False) -> dict[str, Any]:
+    """Obsidian bridge status: detected vaults, the vault used, whether the repo lives inside it,
+    Claudian plugin presence. mirror=true copies council notes (MEMORY, HANDOFF, LESSONS, TASKS,
+    task cards with frontmatter, reports) into <vault>/<folder>/<project>/."""
+    st = obsidian.status(rt.cfg.obsidian, rt.root)
+    if mirror:
+        st["mirrored_to"] = _mirror()
+    return st
 
 
 @mcp.tool()

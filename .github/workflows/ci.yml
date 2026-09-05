@@ -22,3 +22,4 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run pytest -q
+      - run: uv run python scripts/privacy_check.py

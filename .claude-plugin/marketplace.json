@@ -1,0 +1,17 @@
+{
+  "name": "super-claude-code",
+  "owner": {
+    "name": "Pawel Sitkowski",
+    "url": "https://github.com/sitkowsp"
+  },
+  "plugins": [
+    {
+      "name": "council",
+      "source": {
+        "source": "github",
+        "repo": "sitkowsp/super-claude-code"
+      },
+      "description": "Delegate disjoint tasks to Codex, Copilot, Antigravity, Ollama; Claude plans, reviews, merges."
+    }
+  ]
+}

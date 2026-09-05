@@ -5,8 +5,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT}\" council events --root \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council events --root \"${CLAUDE_PROJECT_DIR}\"",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council session-start --root \"${CLAUDE_PROJECT_DIR}\"",
+            "timeout": 60,
+            "statusMessage": "council: checking executors"
           }
         ]
       }

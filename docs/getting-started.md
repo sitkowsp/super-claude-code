@@ -7,15 +7,20 @@ plans, answers questions, reviews and merges.
 
 ## 1. Install the plugin once
 
-```bash
-git clone https://github.com/<you>/super-claude-code
-cd super-claude-code
-uv sync
+In Claude Code:
+
 ```
+/plugin marketplace add sitkowsp/super-claude-code
+/plugin install council@super-claude-code
+```
+
+Or from a clone (`git clone … && uv sync`) if you prefer to run it from source.
 
 Requirements: Python 3.12, [`uv`](https://docs.astral.sh/uv/) and `git` on PATH.
 
 ## 2. Install the executors you own
+
+`council setup --install` does the npm ones for you; logins stay manual (browser).
 
 | Executor | Install | Login |
 |---|---|---|
@@ -29,10 +34,13 @@ You do not need all of them. Models that are missing are disabled automatically.
 
 ## 3. Initialise a project
 
+With the plugin installed, just open the project in Claude Code: the SessionStart hook runs
+`council init` if `.council/` is missing and prints which executors are ready. Manually:
+
 ```bash
 cd /path/to/your/project
-uv run --directory /path/to/super-claude-code council init
-uv run --directory /path/to/super-claude-code council doctor
+council setup --install       # install missing npm CLIs, print login commands
+council doctor                # installed / logged in / action table, Obsidian status
 ```
 
 `council init` writes `.council/council.json` (models, routing, gates, `never_share`),

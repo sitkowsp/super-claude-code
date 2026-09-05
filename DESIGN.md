@@ -1,6 +1,6 @@
 # Super Claude Code — plugin `council` · projekt wykonawczy v1.0
 
-2026-09-05 (rev. 3.7: faza 3 — dokumentacja użytkownika EN w `docs/`, `council report`, pierwszy realny epik (sitek-site) przez narzędzia MCP; rev. 3.6: adapter `antigravity` (agy) — następca Gemini CLI dla kont indywidualnych, generuje PNG (19.15); rev. 3.5: faza 2b — trust, defects_after_merge, LESSONS.md, playbooki, compare, why, dissent; rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
+2026-09-05 (rev. 3.8: instalacja jako plugin (marketplace, SessionStart), `council setup/doctor` z logowaniem, kontrola prywatności, warstwa Obsidian (§20); rev. 3.7: faza 3 — dokumentacja użytkownika EN w `docs/`, `council report`, pierwszy realny epik (sitek-site) przez narzędzia MCP; rev. 3.6: adapter `antigravity` (agy) — następca Gemini CLI dla kont indywidualnych, generuje PNG (19.15); rev. 3.5: faza 2b — trust, defects_after_merge, LESSONS.md, playbooki, compare, why, dissent; rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
 Ten dokument jest jedynym źródłem prawdy. W Claude Code leży jako `DESIGN.md`. Jeśli implementacja odbiega od dokumentu — poprawia się dokument w tym samym commicie.
 
 ---
@@ -111,7 +111,7 @@ Jeżeli aktualny format pluginów Claude Code różni się od `.claude-plugin/pl
   "max_parallel": 3,
   "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
   "models": {
-    "local":  {"adapter": "ollama", "url": "http://10.20.21.9:11434", "model": "qwen3-coder:30b",
+    "local":  {"adapter": "ollama", "url": "http://<srv-ai>:11434", "model": "qwen3-coder:30b",
                "num_ctx": 32768, "max_parallel": 1,
                "roles": ["implement", "review", "data"], "privacy": ["public", "internal", "local-only"]},
     "gemini": {"adapter": "gemini", "cmd": "gemini", "max_parallel": 2,
@@ -500,7 +500,7 @@ Wynik gates trafia do `reports/<id>/gates.json`; reviewer zaczyna od niego.
   "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
   "limits": {"max_changed_lines": 300, "max_scope_files": 6},
   "approvals": {"plan": true, "run": false, "review": false, "merge": true, "epic_merge": true},
-  "notify": {"webhook": "http://10.20.21.9:5678/webhook/council", "on": ["blocked", "failed", "wave_done"]},
+  "notify": {"webhook": "http://<srv-ai>:5678/webhook/council", "on": ["blocked", "failed", "wave_done"]},
 
   "models": {
     "codex":     {"adapter": "codex", "cmd": "codex", "max_parallel": 2, "roles": ["implement", "refactor", "ui"], "privacy": ["public"]},
@@ -510,11 +510,11 @@ Wynik gates trafia do `reports/<id>/gates.json`; reviewer zaczyna od niego.
                   "roles": ["review", "implement", "research"], "privacy": ["public"]},
     "cheap":     {"adapter": "claude-sub", "cmd": "claude", "model": "haiku", "max_parallel": 2, "roles": ["chores", "docs"], "privacy": ["public", "internal"]},
     "deep":      {"adapter": "claude-sub", "cmd": "claude", "model": "opus", "max_parallel": 1, "roles": ["deep-review"], "privacy": ["public", "internal"]},
-    "local":     {"adapter": "ollama", "url": "http://10.20.21.9:11434", "model": "qwen3-coder:30b", "num_ctx": 32768, "max_parallel": 1,
+    "local":     {"adapter": "ollama", "url": "http://<srv-ai>:11434", "model": "qwen3-coder:30b", "num_ctx": 32768, "max_parallel": 1,
                   "roles": ["implement", "data", "test"], "privacy": ["public", "internal", "local-only"]},
-    "local-big": {"adapter": "ollama", "url": "http://10.20.21.9:11434", "model": "glm-5.2:q4", "num_ctx": 16384, "max_parallel": 1, "enabled": false,
+    "local-big": {"adapter": "ollama", "url": "http://<srv-ai>:11434", "model": "glm-5.2:q4", "num_ctx": 16384, "max_parallel": 1, "enabled": false,
                   "roles": ["review", "deep-review"], "privacy": ["public", "internal", "local-only"]},
-    "embed":     {"adapter": "ollama-embed", "url": "http://10.20.21.9:11434", "model": "qwen3-embedding:8b"}
+    "embed":     {"adapter": "ollama-embed", "url": "http://<srv-ai>:11434", "model": "qwen3-embedding:8b"}
   },
 
   "routing": {
@@ -830,5 +830,20 @@ Zasada: local Ollama jest **wsparciem oszczędzającym tokeny** (review, chores,
 - `mcp` SDK 2.x: `FastMCP` → `MCPServer` (§0 mówi „FastMCP" — ten sam komponent pod nową nazwą).
 - Pierwsze środowisko to laptop użytkownika (31 GB RAM, RTX 5070 Laptop): profil `.council/council.json` używa lokalnej Ollamy i `qwen3:8b` / `num_ctx` 16384. `qwen3-coder:30b` na srv-ai pozostaje domyślnym w `templates/council.json`.
 - `gemini`, `codex`, `grok` nie są zainstalowane — sonda wyłącza je z routingu; DoD „zapytaj gemini o X" z §8 do zweryfikowania po instalacji CLI.
+
+## 20. Obsidian jako „mastermind" projektów (propozycja fazy 4, faza A wykonana 2026-09-05)
+
+Motywacja: cały stan council to Markdown (`MEMORY`, `HANDOFF`, `LESSONS`, `TASKS`, raporty, karty). Użytkownik ma Obsidiana (vault obejmuje cały `WORKSPACE`), więc te notatki już są w grafie. Plugin **Claudian** daje Claude Code wewnątrz vaulta — drugie „krzesło orkiestratora" z tym samym śladem audytowym.
+
+**Faza A (zrobione):** `obsidian.py` — wykrywanie vaultów z `obsidian.json` (Windows/macOS/Linux), preferencja vaulta zawierającego repo, detekcja Claudiana (`.obsidian/plugins/claudian`), lustro `<vault>/Council/<projekt>/` (MEMORY/HANDOFF/LESSONS/TASKS, `REPORT-*.md`, `reports/`, karty jako notatki z frontmatter + README z Dataview); jeśli repo jest w vaulcie — tylko notatka indeksowa. Wywołanie: po `council_plan`, `council_merge`, `council_handoff`, narzędzie `council_obsidian`, `council obsidian --mirror`. Konfiguracja `obsidian: {vault, folder, mirror, read_context}`. `doctor` i hook SessionStart mówią, czy Obsidian/Claudian są, i sugerują instalację.
+
+**Faza B (propozycja):** (1) `read_context` — notatki vaulta (spec, ADR) czytane przez plannera przed kartami, z cytowaniem źródła; notatki `#council/spec` automatycznie; (2) sekcja `## Decisions` w notatce projektu scalana do `MEMORY.md` przy planowaniu (vault wygrywa, event `memory_from_vault`); (3) `blocked` → notatka `inbox/T-xxx.md` z polem `answer:`; wypełnienie w Obsidianie → hook SessionStart → `council_answer` (to jest `/council:inbox` z 16.5 w vaulcie); (4) zestaw komend Claudiana wołający ten sam serwer MCP; (5) linki kart do dotkniętych plików i lekcji — graf pokazuje, który model dotykał czego. **Nie planujemy:** zapisu do vaulta przez wykonawców, zależności od Obsidian Sync.
+
+## 21. Instalacja i higiena publikacji (2026-09-05)
+
+- Plugin: `.claude-plugin/marketplace.json` → `/plugin marketplace add sitkowsp/super-claude-code` + `/plugin install council@super-claude-code`. `.mcp.json` używa `${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}`, więc ten sam plik działa w instalacji pluginu i w klonie. Hook **SessionStart** uruchamia `council session-start`: `init` gdy brak `.council/`, jedna linia o gotowych wykonawcach, wzmianka o `HANDOFF.md` i Obsidianie.
+- `council setup [--install]`: katalog wykonawców (`setup.CATALOG`) z komendą instalacji i logowania; `--install` doinstalowuje CLI z npm; logowania zawsze ręczne (przeglądarka). `council doctor`: tabela installed / logged in / action (codex: `codex login status`; copilot: `gh auth status`; agy: `~/.gemini/google_accounts.json`).
+- Grok: adapter istnieje, nigdy nie był uruchomiony → `enabled: false` w szablonie, oznaczony „unverified".
+- Prywatność: `scripts/privacy_check.py` w CI (ścieżki użytkownika, prywatne IP, e-maile, tokeny; allowlista `.privacy-allow`); z dokumentów usunięto wewnętrzne IP i nazwę konta. Nazwa NUCO zostaje jako kontekst historyczny projektu (§17), nie jako dane prywatne.
 
 Koniec dokumentu projektowego. Dalsze zmiany powstają w repo, w tym samym pliku, zawsze z numerem rewizji.

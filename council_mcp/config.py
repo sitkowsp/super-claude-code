@@ -13,6 +13,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from council_mcp.obsidian import ObsidianConfig
 from council_mcp.stats import TrustPolicy
 
 Role = Literal[
@@ -78,6 +79,7 @@ class CouncilConfig(BaseModel):
     # after merge ("after_merge"). Keys are free-form stages; DESIGN.md §14.5.
     gates: dict[str, list[str]] = Field(default_factory=dict)
     trust: TrustPolicy = Field(default_factory=TrustPolicy)
+    obsidian: ObsidianConfig = Field(default_factory=ObsidianConfig)
 
     @field_validator("models")
     @classmethod

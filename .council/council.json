@@ -194,5 +194,11 @@
       "uv run mypy",
       "uv run pytest -q"
     ]
+  },
+  "obsidian": {
+    "vault": null,
+    "folder": "Council",
+    "mirror": true,
+    "read_context": []
   }
 }
