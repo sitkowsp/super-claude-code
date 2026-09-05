@@ -50,18 +50,30 @@ Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`
 > `COUNCIL_OBSIDIAN_VAULT` are invisible to it until it restarts. The symptom of skipping this is
 > "council MCP server: CONNECTION_CLOSED" or commands that say `uv` is not found.
 
-Open any project. On the first session the plugin initialises `.council/` for you and prints which
-executors are ready and which need one command. Then:
+Open any project in Claude Code. On the first session the plugin initialises `.council/` for you
+and prints which executors are ready and which need one command. Then, still inside Claude Code:
 
-```bash
-council setup --install     # installs missing npm CLIs (Codex, Copilot); prints login commands
-council doctor              # full table: installed / logged in / action, Obsidian status
+```
+/council:setup --install    # installs missing npm CLIs (Codex, Copilot, Grok); lists logins needed
+/council:doctor             # full table: installed / logged in / action, Obsidian status
 ```
 
-Logins are the only manual step and each opens a browser: `codex login` (ChatGPT), `gh auth login`
-(Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama needs no login.
+Logins are the only manual step and each opens a browser — run them in a terminal: `codex login`
+(ChatGPT), `gh auth login` (Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama
+needs no login. Restart Claude Code afterwards.
 
-Troubleshooting: **the council MCP server did not connect (CONNECTION_CLOSED)** almost always means
+There is **no `council` command on your PATH** with a plugin install — the CLI lives inside the
+plugin's own virtualenv. Everything is reachable as `/council:<name>` slash commands and
+`council_*` MCP tools; if you ever need the terminal form, it is:
+
+```bash
+uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> council doctor
+```
+
+Troubleshooting: **a tool such as `council_doctor` is "missing"** means Claude connected to a stale
+project-level `.mcp.json` written by an older `council init` (it pins one cached plugin version).
+With the plugin installed, delete the `council` entry from the project's `.mcp.json` — since rc4
+`init` no longer writes it when running from the plugin. **The council MCP server did not connect (CONNECTION_CLOSED)** almost always means
 `uv` is not on the PATH of the process that launched Claude Code — after installing uv (or adding
 its folder to PATH) **restart Claude Code**, or set the environment variable `COUNCIL_UV` to the
 full path of `uv.exe`; then `/mcp` reconnects. `/council:doctor` shows the executor table once the
@@ -75,9 +87,12 @@ and restart Claude Code. The first start builds a private virtualenv in the plug
 ```bash
 git clone https://github.com/sitkowsp/super-claude-code && cd super-claude-code && uv sync
 cd /path/to/your/project
-uv run --directory /path/to/super-claude-code council init
+uv run --directory /path/to/super-claude-code council init      # writes .council/ and .mcp.json
 uv run --directory /path/to/super-claude-code council doctor
 ```
+
+In a clone the `council` CLI is available as `uv run council …` (init, setup, doctor, events,
+obsidian, report, session-start); the `.mcp.json` written by `init` points Claude Code at the clone.
 
 ## Requirements
 
@@ -179,7 +194,8 @@ from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obs
   reads them (`council_context`) and cites them in cards. Bullets in `DECISIONS.md` are merged into the
   repo's `MEMORY.md` at the next plan.
 - A `blocked` task creates `Council/<project>/inbox/T-007.md`; fill its `answer:` field in Obsidian
-  and the next `council_status` resumes the task. `council init --obsidian` installs Claudian slash
+  and the next `council_status` resumes the task. `council_obsidian(kit=true)` (or
+  `council init --obsidian` from a clone) installs Claudian slash
   commands (`/council-status`, `/council-answer`, `/council-decide`, `/council-handoff`) in the vault.
 
 **Where to find your projects in Obsidian**
@@ -187,7 +203,7 @@ from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obs
 - Recommended: one dedicated vault for all council projects — create an empty folder, open it
   once in Obsidian, set the user environment variable `COUNCIL_OBSIDIAN_VAULT` to its path (see
   `docs/obsidian.md` for a Dashboard note with Dataview tables across projects).
-- Open the vault that `council doctor` reports (`Obsidian: vault …`). In the file explorer look for
+- Open the vault that `/council:doctor` reports (`Obsidian: vault …`). In the file explorer look for
   the folder **`Council/`** at the vault root (rename it with `obsidian.folder` in `council.json`).
 - One sub-folder per project: `Council/<project>/` with `README.md` (Dataview board of all tasks),
   `MEMORY.md` (decisions), `HANDOFF.md` (where the last session stopped), `LESSONS.md`,
@@ -198,7 +214,7 @@ from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obs
 - Search: tag `#council` on every mirrored note; `#council/merged`, `#council/blocked` etc. by
   task state. Dataview: `TABLE state, model FROM "Council/<project>/tasks"`.
 - Refresh on demand with `/council:status` → `council_obsidian(mirror=true)` or
-  `council obsidian --mirror`; it also runs after every plan, merge and handoff.
+  (from a clone: `uv run council obsidian --mirror`); it also runs after every plan, merge and handoff.
 
 ## Trust, lessons, playbooks
 

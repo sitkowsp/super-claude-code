@@ -30,6 +30,7 @@ async def test_check_all_reports_missing_and_actions(
 
 
 def test_detect_vaults_and_resolve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(obsidian.ENV_VAULT, raising=False)  # the developer's machine may set it
     vault = tmp_path / "Vault"
     (vault / ".obsidian" / "plugins" / "claudian").mkdir(parents=True)
     repo = vault / "code" / "proj"

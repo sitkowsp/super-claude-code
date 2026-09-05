@@ -7,7 +7,7 @@ the Claudian plugin, to talk to Claude about it from inside the vault.
 
 ## What works today (Phase A)
 
-- **Detection.** `council doctor` and the SessionStart hook read Obsidian's own vault list
+- **Detection.** `/council:doctor` and the SessionStart hook read Obsidian's own vault list
   (`%APPDATA%\obsidian\obsidian.json` on Windows, `~/Library/Application Support/obsidian/` on
   macOS, `~/.config/obsidian/` on Linux). A vault that already contains your repo is preferred;
   otherwise the currently open vault. They also report whether the **Claudian** plugin is installed
@@ -15,7 +15,7 @@ the Claudian plugin, to talk to Claude about it from inside the vault.
   Claudian embeds the Claude Agent SDK and runs Claude Code with the vault as working directory,
   so Claude Code plugin agents and the council MCP server are usable from inside Obsidian
   (details: `research-obsidian-claudian-2026-09.md`).
-- **Mirror.** `council_obsidian(mirror=true)`, `council obsidian --mirror`, and automatically after
+- **Mirror.** `council_obsidian(mirror=true)` (terminal: `uv run council obsidian --mirror` in a clone), and automatically after
   `council_plan`, `council_merge` and `council_handoff`: council writes
   `<vault>/Council/<project>/` with `MEMORY.md`, `HANDOFF.md`, `LESSONS.md`, `TASKS.md`,
   `REPORT-*.md`, `reports/<id>/…`, and one note per task in `tasks/T-001.md` with YAML
@@ -57,7 +57,7 @@ from the vault.
 
 ## If you do not have Obsidian or Claudian
 
-Council works without them. `council doctor` prints a one-line suggestion:
+Council works without them. `/council:doctor` prints a one-line suggestion:
 install Obsidian (https://obsidian.md), open or create a vault, and add the community plugin
 **Claudian** to chat with Claude Code inside the vault. Without Claudian you still get the mirrored
 notes, links and Dataview boards.
@@ -65,7 +65,7 @@ notes, links and Dataview boards.
 ## Phase B — implemented (DESIGN.md §20)
 
 Items 1–4 below are live: `council_context`, `DECISIONS.md` → MEMORY.md at plan, the `inbox/` round
-trip applied by `council_status`, and `council init --obsidian` (Claudian command kit + CLAUDE.md
+trip applied by `council_status`, and `council_obsidian(kit=true)` / `council init --obsidian` (Claudian command kit + CLAUDE.md
 block in the vault). Item 5 (file links in the graph) remains open.
 
 ### Original proposal

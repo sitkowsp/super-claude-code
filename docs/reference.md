@@ -95,27 +95,38 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_stats` | – | trust table, counters, LESSONS tail |
 | `council_why` | task | history with reasons |
 | `council_handoff` | text | write HANDOFF.md (+ Obsidian mirror) |
-| `council_obsidian` | mirror? | vault detection / mirror |
+| `council_obsidian` | mirror?, kit? | vault detection / mirror / Claudian command kit |
 | `council_context` | – | vault planning notes |
 | `council_analyze` | write? | deterministic repo scan, proposed gates |
 | `council_should_delegate` | role, est_lines, est_files?, touches_seams?, privacy? | delegate / self / ask |
 | `council_budget` | – | session minutes, offload hint |
 | `council_doctor` | – | environment check (same as `council doctor`) |
+| `council_setup` | install? | executor table, npm install commands (run when install=true), logins needed |
 
 ## CLI
 
+Available as `uv run council …` in a clone, or `uv run --directory <plugin cache dir> council …`
+with a plugin install (`~/.claude/plugins/cache/super-claude-code/council/<version>`). The plugin
+does not put `council` on your PATH; the slash commands and MCP tools cover the same functions
+(`/council:setup` ≈ `council setup`, `/council:doctor` ≈ `council doctor`, hooks run `session-start`
+and `events` for you).
+
 ```
-council init [--root DIR] [--force]   bootstrap .council/ and .mcp.json
+council init [--root DIR] [--force] [--obsidian]   bootstrap .council/ and .mcp.json (+ vault kit)
+council setup [--root DIR] [--install]            executor table; install missing npm CLIs
 council doctor [--root DIR]           probe models, validate routing
 council events [--root DIR]           brief of new events (used by the UserPromptSubmit hook)
 council report [--root DIR] [--out F]  one-page Markdown report: tasks, reviews, trust, time
+council obsidian [--root DIR] [--mirror] vault status / mirror
+council session-start [--root DIR]     what the SessionStart hook runs
 ```
 
 ## Slash commands (plugin)
 
 `/council:ask`, `/council:plan`, `/council:run`, `/council:status`, `/council:answer`,
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
-`/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`. Subagents: `council-planner`, `council-reviewer`,
+`/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`,
+`/council:setup`. Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables

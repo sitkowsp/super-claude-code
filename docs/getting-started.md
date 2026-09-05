@@ -20,7 +20,7 @@ Requirements: Python 3.12, [`uv`](https://docs.astral.sh/uv/) and `git` on PATH.
 
 ## 2. Install the executors you own
 
-`council setup --install` does the npm ones for you; logins stay manual (browser).
+`/council:setup --install` (in Claude Code) installs the npm ones for you; logins stay manual (browser).
 
 | Executor | Install | Login |
 |---|---|---|
@@ -41,19 +41,22 @@ before step 3. If you cannot restart, set `COUNCIL_UV` to the full path of `uv` 
 
 ## 3. Initialise a project
 
-With the plugin installed, just open the project in Claude Code: the SessionStart hook runs
-`council init` if `.council/` is missing and prints which executors are ready. Manually:
+With the plugin installed, just open the project in Claude Code: the SessionStart hook runs the
+equivalent of `council init` if `.council/` is missing and prints which executors are ready. Then:
 
-```bash
-cd /path/to/your/project
-council setup --install       # install missing npm CLIs, print login commands
-council doctor                # installed / logged in / action table, Obsidian status
+```
+/council:setup --install      # install missing npm CLIs, list login commands
+/council:doctor               # installed / logged in / action table, Obsidian status
 ```
 
-`council init` writes `.council/council.json` (models, routing, gates, `never_share`),
+Nothing is added to your PATH by a plugin install; the `council` CLI exists only inside the plugin's
+virtualenv (`uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> council …`)
+or in a clone (`uv run council …`). Day to day you use the slash commands.
+
+The init step writes `.council/council.json` (models, routing, gates, `never_share`),
 `.council/CHARTER.md` (the rules every executor gets), `.council/MEMORY.md` (your project
 decisions — executors must follow them), `.mcp.json` (starts the server for Claude Code) and
-`.gitignore` entries. `council doctor` probes every CLI and Ollama and prints what is usable.
+`.gitignore` entries. `/council:doctor` probes every CLI and Ollama and prints what is usable.
 
 Edit `council.json`: remove models you do not have, set `never_share` to cover your secrets, and
 put your test/lint commands into `gates.before_review` and `gates.after_merge`.

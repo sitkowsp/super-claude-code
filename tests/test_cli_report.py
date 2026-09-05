@@ -40,3 +40,13 @@ def test_init_is_idempotent(tmp_path: Path) -> None:
     assert ".council/MEMORY.md" in done and ".mcp.json" in done
     assert cli.init(tmp_path, Path.cwd()) == []
     assert (tmp_path / ".council" / "council.json").exists()
+
+
+def test_init_from_plugin_cache_skips_project_mcp_json(tmp_path: Path) -> None:
+    fake_cache = tmp_path / ".claude" / "plugins" / "cache" / "super-claude-code" / "council"
+    fake_cache.mkdir(parents=True)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    done = cli.init(repo, fake_cache)
+    assert ".mcp.json" not in done and not (repo / ".mcp.json").exists()
+    assert (repo / ".council" / "council.json").exists()

@@ -550,14 +550,48 @@ def _mirror() -> str | None:
 
 
 @mcp.tool()
-async def council_obsidian(mirror: bool = False) -> dict[str, Any]:
+async def council_obsidian(mirror: bool = False, kit: bool = False) -> dict[str, Any]:
     """Obsidian bridge status: detected vaults, the vault used, whether the repo lives inside it,
     Claudian plugin presence. mirror=true copies council notes (MEMORY, HANDOFF, LESSONS, TASKS,
-    task cards with frontmatter, reports) into <vault>/<folder>/<project>/."""
+    task cards with frontmatter, reports) into <vault>/<folder>/<project>/. kit=true installs the
+    Claudian slash commands (/council-status, -answer, -decide, -handoff) and a CLAUDE.md block in
+    the vault."""
     st = obsidian.status(rt.cfg.obsidian, rt.root)
     if mirror:
         st["mirrored_to"] = _mirror()
+    if kit:
+        st["kit_written"] = vault.write_kit(rt.cfg.obsidian, rt.root)
     return st
+
+
+@mcp.tool()
+async def council_setup(install: bool = False) -> dict[str, Any]:
+    """Executor setup from inside Claude Code: table of installed / logged-in executors, the npm
+    install commands for missing ones (run them when install=true), and the login command each
+    model still needs (logins open a browser — the user runs them). No PATH-level `council`
+    binary is required."""
+    from council_mcp import setup
+
+    cfg = rt.cfg
+    checks = await setup.check_all(cfg)
+    commands = await setup.install_missing(cfg, dry_run=not install)
+    logins = [
+        {"model": c.model, "login": setup.CATALOG[c.adapter].login}
+        for c in checks
+        if c.adapter in setup.CATALOG
+        and c.enabled
+        and c.logged_in is not True
+        and c.adapter != "ollama"
+    ]
+    if install:
+        rt.reset()
+        checks = await setup.check_all(cfg)
+    return {
+        "table": setup.render(checks),
+        "install_commands": commands,
+        "installed_now": install,
+        "logins_needed": logins,
+    }
 
 
 @mcp.tool()

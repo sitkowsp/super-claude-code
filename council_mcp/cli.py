@@ -59,7 +59,10 @@ def init(root: Path, plugin_dir: Path, force: bool = False) -> list[str]:
             f.write("\n# council runtime\n" + "\n".join(missing) + "\n")
         done.append(".gitignore")
     mcp = root / ".mcp.json"
-    if force or not mcp.exists():
+    # Installed as a Claude Code plugin? Then the plugin's own .mcp.json already starts the server;
+    # a project-level copy would pin an absolute path to one cached version and go stale.
+    from_plugin_cache = "plugins" in plugin_dir.parts and "cache" in plugin_dir.parts
+    if not from_plugin_cache and (force or not mcp.exists()):
         data = json.loads(
             json.dumps(MCP_JSON).replace("${COUNCIL_PLUGIN_DIR}", plugin_dir.as_posix())
         )
