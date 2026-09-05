@@ -54,6 +54,10 @@ When working here, follow the same rule the plugin enforces: docs/assets/chores/
 
 `uv run python scripts/privacy_check.py` must pass before any push (CI enforces it). Use placeholders: `<user>`, `<srv-ai>`, `user@example.com`.
 
+## Plugin packaging rules (learned 2026-09-05)
+
+`commands/`, `agents/`, `hooks/hooks.json` are auto-loaded by Claude Code — do **not** list them in `plugin.json` (duplicate-load error). Only `mcpServers` is referenced there. The marketplace source is an HTTPS git URL (SSH fails for users without GitHub keys). Any manifest fix needs a **new version string**, otherwise the installed cache is not refreshed (`claude plugin update` says "already latest"). Verify with `claude plugin list` (Status: enabled) and by running `uv run --directory <cache> council --help`.
+
 ## Shell gotchas
 
 **npm .cmd shims + multi-line args**: cmd.exe truncates argv at the first newline. `cli.py` bypasses shims via `shim_target()` (runs `node <script>`); keep it that way for any new npm-based CLI.

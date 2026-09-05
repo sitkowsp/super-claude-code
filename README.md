@@ -55,6 +55,11 @@ council doctor              # full table: installed / logged in / action, Obsidi
 Logins are the only manual step and each opens a browser: `codex login` (ChatGPT), `gh auth login`
 (Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama needs no login.
 
+Troubleshooting the install: the marketplace clones over HTTPS, so no SSH key is needed. If
+`claude plugin install` reports an invalid manifest or a stale version, run
+`claude plugin marketplace update super-claude-code` then `claude plugin update council@super-claude-code`
+and restart Claude Code. The first start builds a private virtualenv in the plugin cache (10–30 s).
+
 **From a clone** (development, or without the plugin system):
 
 ```bash
