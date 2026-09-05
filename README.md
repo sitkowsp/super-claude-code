@@ -135,6 +135,9 @@ from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obs
 
 **Where to find your projects in Obsidian**
 
+- Recommended: one dedicated vault for all council projects — create an empty folder, open it
+  once in Obsidian, set the user environment variable `COUNCIL_OBSIDIAN_VAULT` to its path (see
+  `docs/obsidian.md` for a Dashboard note with Dataview tables across projects).
 - Open the vault that `council doctor` reports (`Obsidian: vault …`). In the file explorer look for
   the folder **`Council/`** at the vault root (rename it with `obsidian.folder` in `council.json`).
 - One sub-folder per project: `Council/<project>/` with `README.md` (Dataview board of all tasks),

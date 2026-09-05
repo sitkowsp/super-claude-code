@@ -30,6 +30,31 @@ the Claudian plugin, to talk to Claude about it from inside the vault.
 
 `vault: null` = auto-detect; set an absolute path to pin one. `mirror: false` turns it off.
 
+Resolution order: `obsidian.vault` in council.json → environment variable `COUNCIL_OBSIDIAN_VAULT`
+(a user-level default: one vault for all your council projects) → a vault that already contains the
+repo → the currently open vault.
+
+## A dedicated vault for council projects (recommended)
+
+Create an empty folder, e.g. `~/obsidian-council`, put a `Dashboard.md` in it (template below), set
+`COUNCIL_OBSIDIAN_VAULT` to its path, and open it once in Obsidian (*Open folder as vault*) so it is
+registered. Every project then lands in `Council/<project>/`, and one Dataview dashboard shows all
+projects, blocked tasks, reviews and merges across repos:
+
+```markdown
+## Projects
+```dataview
+TABLE repo FROM "Council" WHERE council_project SORT file.name
+```
+## Tasks needing a human
+```dataview
+TABLE title, model, attempt FROM "Council" WHERE council_task AND state = "blocked"
+```
+```
+
+Install the **Dataview** community plugin for the tables and **Claudian** to chat with Claude Code
+from the vault.
+
 ## If you do not have Obsidian or Claudian
 
 Council works without them. `council doctor` prints a one-line suggestion:

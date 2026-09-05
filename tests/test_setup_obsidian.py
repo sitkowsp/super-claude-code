@@ -56,6 +56,9 @@ def test_detect_vaults_and_resolve(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert obsidian.has_claudian(vault) and not obsidian.has_claudian(other)
     st = obsidian.status(cfg, repo)
     assert st["repo_inside_vault"] and st["claudian"]
+    monkeypatch.setenv(obsidian.ENV_VAULT, str(other))
+    assert obsidian.resolve_vault(cfg, repo) == other  # env default beats the containing vault
+    monkeypatch.delenv(obsidian.ENV_VAULT)
 
 
 def test_mirror_writes_notes_with_frontmatter(

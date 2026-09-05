@@ -73,10 +73,17 @@ def has_claudian(vault: Path) -> bool:
     return False
 
 
+ENV_VAULT = "COUNCIL_OBSIDIAN_VAULT"  # user-level default: one vault for all council projects
+
+
 def resolve_vault(cfg: ObsidianConfig, repo_root: Path) -> Path | None:
-    if cfg.vault:
-        p = Path(os.path.expandvars(cfg.vault)).expanduser()
-        return p if p.exists() else None
+    """Order: council.json `vault` → env COUNCIL_OBSIDIAN_VAULT → vault containing the repo →
+    the open vault."""
+    for candidate in (cfg.vault, os.environ.get(ENV_VAULT)):
+        if candidate:
+            p = Path(os.path.expandvars(candidate)).expanduser()
+            if p.exists():
+                return p
     for v in detect_vaults():
         vp = Path(str(v["path"]))
         # prefer a vault that already contains the repo, else the open one
