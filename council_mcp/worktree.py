@@ -190,10 +190,26 @@ class GitRepo:
             head = (await self.git("rev-parse", "--abbrev-ref", "HEAD")).strip()
             if head != base:
                 raise GitError(f"repo HEAD is on '{head}', expected '{base}' — switch first")
-            status = (await self.git("status", "--porcelain", "--untracked-files=no")).strip()
+            # council's own state under .council/ changes all the time; only user files matter
+            status = (
+                await self.git(
+                    "status", "--porcelain", "--untracked-files=no", "--", ".", ":!.council"
+                )
+            ).strip()
             if status:
                 raise GitError("main worktree has uncommitted changes — commit or stash first")
             await self.git("merge", "--no-ff", "-m", f"council: merge {task_id}", branch)
+            return (await self.git("rev-parse", "--short", "HEAD")).strip()
+
+    async def commit_paths(self, paths: list[str], message: str) -> str | None:
+        """Commit specific tracked/untracked files on the main worktree (e.g. MEMORY.md after a
+        merge) so the next merge finds a clean tree. Returns the short hash or None if nothing."""
+        async with self.lock:
+            await self.git("add", "--", *paths)
+            staged = (await self.git("diff", "--cached", "--name-only")).strip()
+            if not staged:
+                return None
+            await self.git("commit", "-q", "-m", message)
             return (await self.git("rev-parse", "--short", "HEAD")).strip()
 
     async def remove(self, task_id: str, keep_branch: bool = True) -> None:

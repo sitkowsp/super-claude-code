@@ -445,6 +445,22 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
         with mem.open("a", encoding="utf-8") as f:
             f.write(f"- {t.finished or ''} {tid}: {t.title} ({t.assigned_to}, {commit})\n")
         await sched.git.remove(tid, keep_branch=True)
+        # Council's own state (memory, cards, reports, events) is versioned; commit it now so the
+        # next merge finds a clean tree.
+        state_paths = [
+            rt.cfg.memory_file,
+            ".council/tasks",
+            ".council/reports",
+            ".council/events.jsonl",
+            ".council/stats.json",
+            ".council/TASKS.md",
+        ]
+        try:
+            await sched.git.commit_paths(
+                [p for p in state_paths if (rt.root / p).exists()], f"council: state after {tid}"
+            )
+        except Exception as e:  # noqa: BLE001
+            log.warning("state_commit_failed", task=tid, error=str(e))
         merged.append(
             {"task": tid, "commit": commit, "gates_ok": gates_report.ok if gates_report else None}
         )
