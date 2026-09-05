@@ -179,6 +179,16 @@ class GitRepo:
             base = await self.base_branch()
             if not wt.exists():
                 await self.git("worktree", "add", str(wt), branch)
+            # The executor never writes to the worktree (only sync_and_snapshot does, and it
+            # commits). Unstaged changes here can only be side effects of gates run in it —
+            # e.g. `uv run` refreshing a stale uv.lock, a formatter — and would make `rebase`
+            # refuse with "unstaged changes" (misreported as a conflict before rc10). Discard.
+            noise = (
+                await self.git("status", "--porcelain", "--untracked-files=no", cwd=wt)
+            ).strip()
+            if noise:
+                log.warning("worktree_gate_noise_discarded", task=task_id, status=noise)
+                await self.git("checkout", "--", ".", cwd=wt)
             try:
                 await self.git("rebase", base, cwd=wt)
             except GitError as e:
@@ -186,6 +196,10 @@ class GitRepo:
                     await self.git("diff", "--name-only", "--diff-filter=U", cwd=wt, check=False)
                 ).split()
                 await self.git("rebase", "--abort", cwd=wt, check=False)
+                if not files:
+                    # not a content conflict — surface the real git error instead of
+                    # burning one of the executor's attempts on a re-dispatch
+                    raise GitError(f"{task_id}: rebase onto {base} failed: {e}") from e
                 raise MergeConflict(task_id, files, str(e)) from e
             head = (await self.git("rev-parse", "--abbrev-ref", "HEAD")).strip()
             if head != base:

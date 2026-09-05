@@ -534,7 +534,7 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
             commit = await sched.git.merge(tid)
         except MergeConflict as e:
             msg = (
-                f"Rebase onto base branch failed with conflicts in: {', '.join(e.files) or '?'}.\n"
+                f"Rebase onto base branch failed with conflicts in: {', '.join(e.files)}.\n"
                 f"Rebuild your change on top of the current base branch (your previous work is in "
                 f"PREVIOUS_REPORT.md; the workdir already contains the new base)."
             )

@@ -127,6 +127,11 @@ uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> c
   Code: restart Claude Code after installing uv, or set `COUNCIL_UV` to the full path of `uv.exe`,
   then `/mcp` to reconnect. Plugin versions before rc7 could also fail this way in headless
   `claude -p` sessions (the manifest used a defaulted variable); update the plugin.
+- **Merge says "rebase failed" but lists no conflicting files** — a gate modified a tracked file
+  inside the task worktree (a formatter, or `uv run` refreshing a stale `uv.lock`). Since rc10 such
+  gate side effects are discarded before the rebase and the real git error is shown; on older
+  versions run `git -C .council/worktrees/<id> checkout -- .` and merge again. Keep `uv.lock` in
+  sync with `pyproject.toml` (`uv lock`) so gates do not rewrite it.
 - **Invalid manifest / stale version** — `claude plugin marketplace update super-claude-code`, then
   `claude plugin update council@super-claude-code`, restart. The first start builds a private
   virtualenv in the plugin cache (10–30 s). The marketplace clones over HTTPS; no SSH key needed.

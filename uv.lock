@@ -216,7 +216,7 @@ wheels = [
 
 [[package]]
 name = "council-mcp"
-version = "1.0.0rc5"
+version = "1.0.0rc10"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

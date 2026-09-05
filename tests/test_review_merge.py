@@ -79,6 +79,23 @@ async def test_merge_conflict_aborts_cleanly(repo: Path) -> None:
     assert (repo / "src" / "a.py").read_text() == "a = 3\n"
 
 
+async def test_merge_discards_gate_noise_in_task_worktree(repo: Path) -> None:
+    """Gates run in the task worktree may modify tracked files (e.g. `uv run` refreshing a stale
+    uv.lock). That is not the executor's work and must not make `rebase` refuse; before rc10 it was
+    reported as a conflict with no files and burned an attempt."""
+    g = GitRepo(repo)
+    wt, wd = await g.create("T-001", [])
+    (wd / "src" / "a.py").write_text("a = 2\n")
+    await g.sync_and_snapshot("T-001", ["src/a.py"], "snap")
+    (repo / "src" / "b.py").write_text("b = 2\n")
+    _git(repo, "commit", "-q", "-am", "main moves")
+    (wt / "src" / "b.py").write_text("gate noise\n")  # unstaged change in the worktree
+    commit = await g.merge("T-001")
+    assert "council: merge T-001" in _git(repo, "log", "--oneline", "-1")
+    assert commit and (repo / "src" / "a.py").read_text() == "a = 2\n"
+    assert (repo / "src" / "b.py").read_text() == "b = 2\n"  # noise discarded, not merged
+
+
 async def test_merge_refuses_dirty_main(repo: Path) -> None:
     g = GitRepo(repo)
     _, wd = await g.create("T-001", [])

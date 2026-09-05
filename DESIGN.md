@@ -812,6 +812,8 @@ Trzy karty: `assets` → codex (logo.svg + logo/favicon/hero PNG przez `image_ge
 - `dissent`: pole w front-matter REPORT (`dissent: true`), event `dissent`, flaga w `council_review`; reviewer ma zakaz przegłosowania — pokazuje użytkownikowi. `/council:inbox` (16.5) jeszcze nie ma; na razie `council_status` + flaga.
 - `council_compare` = równoległe `council_ask` do listy modeli (domyślnie `second_opinion`), event `compare` z zadaniem `-`.
 
+- **Gates brudzą worktree zadania** (rc10, 2026-09-05, drugi epic social): `uv run` w `gates.before_review` odświeżył nieaktualny `uv.lock` (rc5 vs rc9) w worktree → `git rebase` odmówił („unstaged changes"), a `council_merge` zgłosił „konflikt w: ?" i zużył próbę wykonawcy przez re-dispatch. Decyzja: wykonawca nigdy nie pisze do worktree, więc niezacommitowane zmiany tam to zawsze efekt uboczny gates — `GitRepo.merge` odrzuca je (`git checkout -- .`, event w logu) przed rebase; rebase bez plików `U` to `GitError` z prawdziwym komunikatem gita, nie `MergeConflict` (bez re-dispatchu). `uv.lock` trzymać w zgodzie z `pyproject.toml` przy każdym bumpie wersji.
+
 ### 19.12 Routing wg typu zadania (decyzja użytkownika 2026-09-05)
 
 | Typ pracy | Rola | Kolejność modeli (`by_role`) | Dlaczego |
