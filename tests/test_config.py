@@ -18,6 +18,7 @@ def test_routing_is_privacy_intersect_role(template_cfg: CouncilConfig) -> None:
         "antigravity",
         "copilot",
         "local",
+        "grok",
     ]
     assert template_cfg.candidates("implement", "local-only") == ["local"]
     assert template_cfg.candidates("refactor", "internal") == []  # no intersection = error later
@@ -25,7 +26,12 @@ def test_routing_is_privacy_intersect_role(template_cfg: CouncilConfig) -> None:
 
 def test_disabled_model_leaves_routing(template_cfg: CouncilConfig) -> None:
     template_cfg.models["codex"].enabled = False
-    assert template_cfg.candidates("implement", "public") == ["antigravity", "copilot", "local", "grok"]
+    assert template_cfg.candidates("implement", "public") == [
+        "antigravity",
+        "copilot",
+        "local",
+        "grok",
+    ]
 
 
 def test_unknown_key_rejected() -> None:
