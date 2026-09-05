@@ -138,6 +138,59 @@ def events(root: Path) -> str:
     return "[council] new events" + more + " — run council_status for details:\n" + "\n".join(lines)
 
 
+def report(root: Path) -> str:
+    """One-page Markdown report for the people who pay for this (DESIGN.md §16.14):
+    tasks by state and model, review outcomes, trust table, time split Claude vs executors."""
+    from collections import Counter
+    from datetime import datetime
+
+    from council_mcp import stats as st_mod
+    from council_mcp.store import TaskStore
+
+    store = TaskStore(root)
+    tasks = store.all()
+    evs = store.events()
+    st = st_mod.load(root)
+    by_state = Counter(t.state for t in tasks)
+    by_model = Counter(t.assigned_to or "-" for t in tasks)
+    types = Counter(e.type for e in evs)
+    # executor wall time: dispatched → done/blocked/failed per task attempt
+    exec_s = 0.0
+    last_dispatch: dict[str, datetime] = {}
+    for e in evs:
+        ts = datetime.fromisoformat(e.ts)
+        if e.type == "dispatched":
+            last_dispatch[e.task] = ts
+        elif e.type in ("done", "blocked", "failed") and e.task in last_dispatch:
+            exec_s += (ts - last_dispatch.pop(e.task)).total_seconds()
+    claude_actions = sum(1 for e in evs if e.actor == "claude")
+    lines = [
+        f"# Council report — {datetime.now().date().isoformat()}",
+        "",
+        f"Tasks: {len(tasks)} — " + ", ".join(f"{k} {v}" for k, v in sorted(by_state.items())),
+        "By model: " + ", ".join(f"{k} {v}" for k, v in sorted(by_model.items())),
+        f"Reviews: ok {types.get('review_ok', 0)}, rejected {types.get('review_reject', 0)}, "
+        f"merged {types.get('merged', 0)}, defects after merge {types.get('defect', 0)}, "
+        f"scope violations {types.get('scope_violation', 0)}, dissent {types.get('dissent', 0)}",
+        f"Executor wall time: {exec_s / 60:.0f} min; orchestrator actions: {claude_actions}",
+        "",
+        "## Trust",
+        "",
+        st_mod.summary(st) if st.models else "_no data yet_",
+        "",
+        "## Tasks",
+        "",
+        "| id | title | model | state | attempt | reason |",
+        "|---|---|---|---|---|---|",
+    ]
+    for t in tasks:
+        lines.append(
+            f"| {t.id} | {t.title} | {t.assigned_to or '-'} | {t.state} | {t.attempt} | "
+            f"{(t.reason or '')[:80]} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="council")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -148,6 +201,9 @@ def main(argv: list[str] | None = None) -> None:
     p_doc.add_argument("--root", type=Path, default=Path.cwd())
     p_ev = sub.add_parser("events", help="print a brief of new council events (hook)")
     p_ev.add_argument("--root", type=Path, default=Path.cwd())
+    p_rep = sub.add_parser("report", help="one-page Markdown report (tasks, reviews, trust, time)")
+    p_rep.add_argument("--root", type=Path, default=Path.cwd())
+    p_rep.add_argument("--out", type=Path, default=None, help="write to file instead of stdout")
     args = ap.parse_args(argv)
     plugin_dir = Path(__file__).resolve().parent.parent
     if args.cmd == "init":
@@ -160,3 +216,10 @@ def main(argv: list[str] | None = None) -> None:
         brief = events(args.root.resolve())
         if brief:
             print(brief)
+    elif args.cmd == "report":
+        text = report(args.root.resolve())
+        if args.out:
+            args.out.write_text(text, encoding="utf-8")
+            print(f"wrote {args.out}")
+        else:
+            print(text)

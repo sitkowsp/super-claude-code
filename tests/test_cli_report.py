@@ -1,0 +1,42 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from council_mcp import cli, stats
+from council_mcp.store import Task, TaskStore
+
+
+def test_report_and_events_brief(tmp_path: Path) -> None:
+    store = TaskStore(tmp_path)
+    t = Task(
+        id="T-001",
+        title="x",
+        role="implement",
+        privacy="public",
+        goal="g",
+        scope=["a/"],
+        assigned_to="codex",
+    )
+    store.save(t)
+    store.event("T-001", "dispatched", model="codex", actor="claude")
+    store.transition(t, "running")
+    store.event("T-001", "blocked", model="codex", actor="model", needs=["which db?"])
+    st = stats.Stats()
+    st.get("codex").tasks = 1
+    stats.save(tmp_path, st)
+    text = cli.report(tmp_path)
+    assert (
+        "Tasks: 1" in text
+        and "| codex | probation | 1 |" in text
+        and "| T-001 | x | codex |" in text
+    )
+    brief = cli.events(tmp_path)
+    assert "T-001 blocked: which db?" in brief
+    assert cli.events(tmp_path) == ""  # marker advanced
+
+
+def test_init_is_idempotent(tmp_path: Path) -> None:
+    done = cli.init(tmp_path, Path.cwd())
+    assert ".council/MEMORY.md" in done and ".mcp.json" in done
+    assert cli.init(tmp_path, Path.cwd()) == []
+    assert (tmp_path / ".council" / "council.json").exists()
