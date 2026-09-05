@@ -1,0 +1,20 @@
+{
+  "stage": "before_review",
+  "ok": true,
+  "results": [
+    {
+      "cmd": "uv run ruff check .",
+      "ok": true,
+      "exit_code": 0,
+      "duration_s": 2.9,
+      "output": "warning: `VIRTUAL_ENV=C:\\Users\\p.sitkowski\\.claude\\plugins\\cache\\super-claude-code\\council\\1.0.0-rc9\\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.12.10 interpreter at: C:\\Users\\p.sitkowski\\AppData\\Local\\Python\\pythoncore-3.12-64\\python.exe\nCreating virtual environment at: .venv\n   Building council-mcp @ file:///C:/Users/p.sitkowski/WORKSPACE/super-cc-plugin/.council/worktrees/T-002\n      Built council-mcp @ file:///C:/Users/p.sitkowski/WORKSPACE/super-cc-plugin/.council/worktrees/T-002\nInstalled 52 packages in 1.57s\nAll checks passed!\n"
+    },
+    {
+      "cmd": "uv run pytest -q",
+      "ok": true,
+      "exit_code": 0,
+      "duration_s": 20.3,
+      "output": "warning: `VIRTUAL_ENV=C:\\Users\\p.sitkowski\\.claude\\plugins\\cache\\super-claude-code\\council\\1.0.0-rc9\\.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n.............................................................            [100%]\r\n============================== warnings summary ===============================\r\ntests\\test_cli_and_probe.py:64\r\n  C:\\Users\\p.sitkowski\\WORKSPACE\\super-cc-plugin\\.council\\worktrees\\T-002\\tests\\test_cli_and_probe.py:64: SyntaxWarning: invalid escape sequence '\\@'\r\n    '@ECHO off\\r\\n\"%_prog%\"  \"%dp0%\\node_modules\\@github\\copilot\\npm-loader.js\" %*\\r\\n'\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n61 passed, 1 warning in 18.53s\r\n"
+    }
+  ]
+}

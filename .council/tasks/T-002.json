@@ -1,0 +1,48 @@
+{
+  "id": "T-002",
+  "title": "Social posts: copy-paste Facebook and Instagram text with both install lines, link in comments",
+  "role": "docs",
+  "privacy": "public",
+  "goal": "Rewrite docs/social/posts.md into ready-to-paste social copy. Keep the file structure (intro, Facebook / LinkedIn, Instagram, X / Threads, Re-render section) but rewrite the Facebook and Instagram sections as final, copy-paste-ready posts:\n\n1. Both posts must contain the install commands as two plain lines in exactly this order:\n   /plugin marketplace add sitkowsp/super-claude-code\n   /plugin install council@super-claude-code\n   Introduce them with a short line such as 'Two lines inside Claude Code:'. Facebook/Instagram strip markdown, so do NOT wrap them in code fences or backticks inside the post body; put each on its own line.\n2. Do NOT put the GitHub URL inside the post bodies. End each post with a line saying the repo link is in the first comment (Instagram: 'link in the first comment' - captions are not clickable). Keep the URL only in the intro note at the top of the file ('Repo link to drop in the first comment: https://github.com/sitkowsp/super-claude-code').\n3. Facebook: 120-220 words, hook first line, what it is (open-source Claude Code plugin; Claude plans, delegates, reviews and merges; ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a local Ollama execute in parallel, each in an isolated copy of the repo on its own git branch), 3-5 benefit bullets with emoji (saves Claude tokens, one branch per task, secrets never leave, gates before merge, Obsidian notes), then the two install lines, then MIT + link-in-comments line, then 10-15 hashtags.\n4. Instagram: shorter (60-120 words before hashtags), punchy lines, emoji, the two install lines, 'link in the first comment', 5 dots-style separator is fine, then 20-25 hashtags.\n5. Keep the X / Threads short version and the Re-render section as they are (you may only fix typos). Update the intro to say the graphics now show both install lines.\n6. Facts must match README.md: plugin name council, marketplace super-claude-code, executors as listed above, MIT license. Do not invent features.",
+  "scope": [
+    "docs/social/posts.md"
+  ],
+  "context_files": [
+    "README.md",
+    "docs/social/graphic-wide.html"
+  ],
+  "acceptance": [
+    "Facebook and Instagram sections each contain the two install lines in the given order as plain lines (no backticks, no code fence)",
+    "No GitHub URL inside the Facebook or Instagram post body; each ends with a link-in-the-first-comment line",
+    "Facts (plugin name, marketplace name, executor list, MIT) match README.md; X / Threads and Re-render sections preserved"
+  ],
+  "depends_on": [],
+  "assigned_to": "copilot",
+  "state": "review",
+  "attempt": 3,
+  "branch": "council/T-002",
+  "worktree": ".council/worktrees/T-002",
+  "workdir": ".council/work/T-002",
+  "created": "2026-09-05T16:47:03+00:00",
+  "started": "2026-09-05T16:47:09+00:00",
+  "finished": "2026-09-05T16:53:44+00:00",
+  "last_report": {
+    "task": "T-002",
+    "status": "done",
+    "percent": 100,
+    "touched": [],
+    "needs": [],
+    "verify": [
+      "grep -n 'marketplace add sitkowsp/super-claude-code' docs/social/posts.md (2 hits: Facebook, Instagram)",
+      "grep -n 'github.com/sitkowsp' docs/social/posts.md (only line 9, the intro note)",
+      "grep -n '\\`council\\`' docs/social/posts.md (only the H1 heading and Re-render section, not inside the Facebook/Instagram post bodies)",
+      "manually confirm the hook/intro paragraph in the Facebook and Instagram bodies is a single unwrapped line each"
+    ],
+    "dissent": false,
+    "body": "Re-checked `docs/social/posts.md` after the rebase-conflict rejection noted in ANSWER.md. The\nrebuilt workdir already contains the current base plus all previously approved content — no diff\nwas needed, so no file was touched this round.\n\nConfirmed against the current README.md (rc9) and the task criteria:\n- Both install lines (`/plugin marketplace add sitkowsp/super-claude-code` then\n  `/plugin install council@super-claude-code`) appear as plain, unfenced lines in both the\n  Facebook and Instagram sections, introduced by \"Two lines inside Claude Code:\".\n- No GitHub URL inside either post body; the URL only appears once, in the intro note at the top\n  (line 9). Both bodies end with a link-in-comment line (\"Link to the repo is in the first\n  comment.\" / \"Link in the first comment.\").\n- Executor list and phrasing (\"ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a\n  local Ollama\") match README.md's current wording; plugin name `council`, marketplace\n  `sitkowsp/super-claude-code`, and MIT license are all consistent.\n- No backticks/markdown inside the Facebook or Instagram post bodies; each intro paragraph is a\n  single physical line (not hard-wrapped).\n- Facebook: hook line + description + 5 emoji bullets + install lines + MIT/link line + 15\n  hashtags. Instagram: hook + short lines + 4 emoji bullets + install lines + link line + dot\n  separator + 20 hashtags. X/Threads and Re-render sections left untouched.\n\nTask complete; nothing left to do."
+  },
+  "reports": 4,
+  "violations": [],
+  "reason": "review_ok",
+  "fallbacks": 0
+}

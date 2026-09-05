@@ -1,0 +1,1 @@
+- 2026-09-05T17:00:12+00:00 T-001: Social graphics: two-line install block (marketplace add first, then plugin install) + re-render PNGs (codex, da7dbe4)

@@ -1,0 +1,28 @@
+{
+  "models": {
+    "codex": {
+      "trust": "probation",
+      "tasks": 1,
+      "review_ok": 2,
+      "review_reject": 0,
+      "first_pass_ok": 1,
+      "consecutive_rejects": 0,
+      "defects_after_merge": 0,
+      "merged": 1,
+      "cooldown_until": null,
+      "fallbacks": 0
+    },
+    "copilot": {
+      "trust": "probation",
+      "tasks": 1,
+      "review_ok": 2,
+      "review_reject": 1,
+      "first_pass_ok": 0,
+      "consecutive_rejects": 0,
+      "defects_after_merge": 0,
+      "merged": 0,
+      "cooldown_until": null,
+      "fallbacks": 0
+    }
+  }
+}

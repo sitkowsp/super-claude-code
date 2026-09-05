@@ -1,0 +1,59 @@
+{
+  "id": "T-001",
+  "title": "Social graphics: two-line install block (marketplace add first, then plugin install) + re-render PNGs",
+  "role": "assets",
+  "privacy": "public",
+  "goal": "Update both social graphics so the install command box at the bottom shows TWO lines, in this exact order:\n\n  /plugin marketplace add sitkowsp/super-claude-code\n  /plugin install council@super-claude-code\n\nFiles: docs/social/graphic-wide.html (1200x630, Facebook/LinkedIn) and docs/social/graphic-square.html (1080x1080, Instagram). Today the `.cmd` div in the `.foot` of each file holds a single line `/plugin install council@super-claude-code`. Replace it with a two-line block (one line per command, e.g. two <div> rows inside `.cmd`, keep the blue `<span>` on the `/plugin` token of each line). Keep everything else in the design unchanged: colors, typography, model cards, perks, brand block on the right (`super-claude-code` / github URL).\n\nLayout rules: the two-line block must fit inside the card without clipping or overlapping the brand block. In the wide graphic the footer row is 1072px wide; reduce `.cmd` font-size (e.g. 22px -> 19-20px) and/or lower the `.foot` bottom offset if needed so the longer first line fits and the brand block stays fully visible on the right. In the square graphic there is more room; the `.cmd` block may keep 22-24px. The `.cmd` box must not push the perks or model cards. Nothing may overflow the 1200x630 / 1080x1080 canvas.\n\nThen re-render the two PNGs with headless Edge from your working directory (replace <WORKDIR> with the absolute path of your working directory, which is given at the top of this task):\n\n  \"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --headless=new --disable-gpu --hide-scrollbars --user-data-dir=%TEMP%\\edge-prof-council --window-size=1200,630 --screenshot=\"<WORKDIR>\\docs\\social\\council-facebook-1200x630.png\" \"file:///<WORKDIR with forward slashes>/docs/social/graphic-wide.html\"\n  \"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --headless=new --disable-gpu --hide-scrollbars --user-data-dir=%TEMP%\\edge-prof-council --window-size=1080,1080 --screenshot=\"<WORKDIR>\\docs\\social\\council-instagram-1080.png\" \"file:///<WORKDIR with forward slashes>/graphic-square.html path\"\n\nAfter rendering, verify each PNG exists, is >100 KB and has the exact pixel size (1200x630 and 1080x1080); e.g. read the PNG IHDR bytes with a short Python or PowerShell snippet. If Edge cannot be launched from your environment, still finish the HTML edits and report status: blocked with the exact error text, listing which files you changed.",
+  "scope": [
+    "docs/social/graphic-wide.html",
+    "docs/social/graphic-square.html",
+    "docs/social/council-facebook-1200x630.png",
+    "docs/social/council-instagram-1080.png"
+  ],
+  "context_files": [
+    "docs/social/posts.md",
+    "README.md"
+  ],
+  "acceptance": [
+    "Both HTML files show two command lines in the footer box, marketplace add first, then plugin install; the only text change in the files is this block",
+    "No element overflows the canvas; the brand block (super-claude-code / github URL) stays fully visible on the right in both graphics",
+    "docs/social/council-facebook-1200x630.png is exactly 1200x630 and docs/social/council-instagram-1080.png is exactly 1080x1080, both re-rendered from the edited HTML (or status: blocked with the Edge error if rendering was impossible)"
+  ],
+  "depends_on": [],
+  "assigned_to": "codex",
+  "state": "merged",
+  "attempt": 2,
+  "branch": "council/T-001",
+  "worktree": ".council/worktrees/T-001",
+  "workdir": ".council/work/T-001",
+  "created": "2026-09-05T16:47:03+00:00",
+  "started": "2026-09-05T16:47:08+00:00",
+  "finished": "2026-09-05T17:00:12+00:00",
+  "last_report": {
+    "task": "T-001",
+    "status": "done",
+    "percent": 100,
+    "touched": [
+      "docs/social/council-facebook-1200x630.png",
+      "docs/social/council-instagram-1080.png"
+    ],
+    "needs": [],
+    "verify": [
+      "Headless Edge render: oba procesy zakonczyly sie kodem 0 po uruchomieniu przez Start-Process -Wait z osobnymi swiezymi profilami tymczasowymi i --no-sandbox",
+      "PowerShell PNG signature/IHDR check: council-facebook-1200x630.png = 1200x630 i 354329 B; council-instagram-1080.png = 1080x1080 i 518122 B; oba maja poprawna sygnature PNG i przekraczaja 100 KB",
+      "PowerShell content check: kazdy HTML zawiera kazda wymagana komende dokladnie raz, a marketplace add poprzedza plugin install",
+      "Oględziny obu PNG: brak przepełnienia płótna i kolizji bloku komend z marką, perks lub kartami modeli; oba bloki marki są w pełni widoczne"
+    ],
+    "dissent": false,
+    "body": "Odtworzenie na aktualnej bazie zakończone. Pliki HTML już zawierały wymagany dwuwierszowy blok w poprawnej kolejności i właściwe ustawienia układu, więc pozostawiłem je bez dodatkowego zapisu. Ponownie wyrenderowałem oba PNG z tych źródeł i potwierdziłem ich wymiary, rozmiar, treść oraz poprawny wygląd. README.md i docs/social/posts.md już dokumentują oba polecenia w poprawnej kolejności; brak plików stanu projektu wymagających aktualizacji. .gitignore nie wymaga zmiany, ponieważ PNG są docelowymi artefaktami z zakresu zadania, a żaden plik tymczasowy nie powstał w repozytorium."
+  },
+  "reports": 10,
+  "violations": [
+    ".claude-plugin/plugin.json",
+    "council_mcp/__init__.py",
+    "pyproject.toml",
+    "uv.lock"
+  ],
+  "reason": "merge da7dbe4",
+  "fallbacks": 0
+}
