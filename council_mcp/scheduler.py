@@ -13,7 +13,7 @@ from council_mcp.adapters import make
 from council_mcp.adapters.base import Adapter, RunHandle
 from council_mcp.config import CouncilConfig
 from council_mcp.log import get
-from council_mcp.store import Task, TaskStore
+from council_mcp.store import MAX_ATTEMPTS, Task, TaskStore
 from council_mcp.watcher import Watcher
 from council_mcp.worktree import GitRepo
 
@@ -64,7 +64,7 @@ class Scheduler:
         started = []
         for tid in ids:
             task = self.store.get(tid)
-            if task.state not in ("queued", "blocked"):
+            if task.state not in ("queued", "blocked", "review"):
                 continue
             if tid in self.jobs and not self.jobs[tid].done():
                 continue
@@ -104,7 +104,7 @@ class Scheduler:
             await self._deps_ready(task)
             async with self.global_sem, self.model_sems[model]:
                 task = self.store.get(tid)
-                resume = task.state == "blocked"
+                resume = task.state in ("blocked", "review")
                 wt, wd = await self.git.create(tid, self.cfg.never_share)
                 if resume:  # keep executor's previous REPORT.md/ANSWER.md next to fresh sources
                     for src, dst in (
@@ -169,6 +169,41 @@ class Scheduler:
             if report.exists():
                 (d / "REPORT.md").write_text(report.read_text(encoding="utf-8"), encoding="utf-8")
         log.info("job_finished", task=tid, state=self.store.get(tid).state, exit=handle.exit_code)
+
+    async def reject(self, tid: str, reason: str) -> str:
+        """Review rejected: attempt+1 (max 3), reason becomes ANSWER.md, re-dispatch."""
+        task = self.store.get(tid)
+        if task.state != "review":
+            raise ValueError(f"{tid} is {task.state}, not review")
+        if task.attempt >= MAX_ATTEMPTS:
+            why = f"rejected {task.attempt}x: {reason[:200]}"
+            self.store.transition(task, "failed", reason=why)
+            self.store.event(
+                tid,
+                "failed",
+                model=task.assigned_to,
+                actor="claude",
+                reason=f"max attempts; last rejection: {reason[:200]}",
+            )
+            return "failed"
+        d = self.root / ".council" / "reports" / tid
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "ANSWER.md").write_text("# Review rejected\n\n" + reason, encoding="utf-8")
+        wd_report = self.root / task.workdir / "REPORT.md"
+        if wd_report.exists():
+            (d / "REPORT.md").write_text(wd_report.read_text(encoding="utf-8"), encoding="utf-8")
+        task.attempt += 1
+        self.store.save(task)
+        self.store.event(
+            tid,
+            "review_reject",
+            model=task.assigned_to,
+            actor="claude",
+            reason=reason[:300],
+            attempt=task.attempt,
+        )
+        self.dispatch([tid])
+        return "running"
 
     async def answer(self, tid: str, text: str) -> None:
         task = self.store.get(tid)

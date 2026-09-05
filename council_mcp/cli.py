@@ -101,6 +101,43 @@ async def doctor(root: Path) -> int:
     return problems
 
 
+def events(root: Path) -> str:
+    """Brief of events newer than `.council/.last_seen_hook` (own marker, not council_status's)."""
+    from council_mcp.store import TaskStore
+
+    c = root / ".council"
+    if not (c / "events.jsonl").exists():
+        return ""
+    store = TaskStore(root)
+    marker = c / ".last_seen_hook"
+    since = marker.read_text().strip() if marker.exists() else None
+    evs = [
+        e
+        for e in store.events(since)
+        if e.type
+        in (
+            "blocked",
+            "done",
+            "failed",
+            "scope_violation",
+            "review_reject",
+            "merged",
+            "injection_suspect",
+        )
+    ]
+    if not evs:
+        return ""
+    marker.write_text(evs[-1].ts if evs else "")
+    lines = []
+    for e in evs[-5:]:
+        detail = e.reason or e.data.get("status") or ""
+        if e.type == "blocked":
+            detail = "; ".join(e.data.get("needs", [])) or detail
+        lines.append(f"- {e.task} {e.type}" + (f": {str(detail)[:120]}" if detail else ""))
+    more = f" (+{len(evs) - 5} more)" if len(evs) > 5 else ""
+    return "[council] new events" + more + " — run council_status for details:\n" + "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="council")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -109,6 +146,8 @@ def main(argv: list[str] | None = None) -> None:
     p_init.add_argument("--force", action="store_true")
     p_doc = sub.add_parser("doctor", help="probe models and validate config")
     p_doc.add_argument("--root", type=Path, default=Path.cwd())
+    p_ev = sub.add_parser("events", help="print a brief of new council events (hook)")
+    p_ev.add_argument("--root", type=Path, default=Path.cwd())
     args = ap.parse_args(argv)
     plugin_dir = Path(__file__).resolve().parent.parent
     if args.cmd == "init":
@@ -117,3 +156,7 @@ def main(argv: list[str] | None = None) -> None:
         print("next: edit .council/council.json, then `council doctor`")
     elif args.cmd == "doctor":
         sys.exit(asyncio.run(doctor(args.root.resolve())))
+    elif args.cmd == "events":
+        brief = events(args.root.resolve())
+        if brief:
+            print(brief)

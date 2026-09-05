@@ -5,10 +5,10 @@ server that lets Claude Code plan, delegate, review and merge while other provid
 GitHub Copilot, Gemini, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
 isolated copy of your repo.
 
-**Status: Phase 1 (dispatch).** Working today, verified end-to-end with Codex and a local Ollama
-model: plan task cards → dispatch to executors → watch REPORT.md → snapshot commits on
-`council/<id>` branches → `blocked` → answer → resume → `review`. Review and merge are still
-manual (Claude does them in chat); automated reviewer/integrator subagents are Phase 2.
+**Status: Phase 2a.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
+dispatch → watch REPORT.md → snapshot commits on `council/<id>` → `blocked` → answer → resume →
+`review`. Review (gates + diff + verdict), merge (rebase, `--no-ff`, after-merge gates, MEMORY.md)
+and the reviewer/integrator subagents exist and are unit-tested; the live review→merge run is next.
 See [DESIGN.md](DESIGN.md) — the single source of truth (§19.9 is the plan).
 
 ## How it works
@@ -36,7 +36,7 @@ instructions.
   - Ollama (local or remote) with a tool-capable model (`qwen3:8b` works on a laptop)
   - `npm i -g @openai/codex` (ChatGPT subscription; `codex login`)
   - `npm i -g @github/copilot` (Copilot subscription; authenticates via `gh auth login`)
-  - `npm i -g @google/gemini-cli`
+  - `npm i -g @google/gemini-cli` (run `gemini` once interactively and pick *Login with Google*)
   - `claude` itself as a cheap executor (`claude -p --model haiku`)
 
 ## Quick start
@@ -70,6 +70,23 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 | `council_status(task?, report?)` | board, new events, per-task detail, diff stat, full report |
 | `council_answer(task, text, remember?)` | answer a `blocked` task and resume it |
 | `council_cancel(task)` | kill the executor, mark failed, keep worktree |
+| `council_review(task)` | review package: card, report, flags, diff, `before_review` gate results |
+| `council_verdict(task, ok, reason)` | `review_ok`, or reject → reason becomes ANSWER.md, attempt+1, re-dispatch |
+| `council_merge(ids?, force?)` | rebase + `merge --no-ff` in id order, `after_merge` gates, MEMORY.md line, cleanup |
+| `council_handoff(text)` | write `.council/HANDOFF.md` for the next session |
+
+## Who does what (default routing)
+
+| Work | role | goes to |
+|---|---|---|
+| code, refactors | `implement`, `refactor` | Codex → Copilot → Gemini → local |
+| icons, logos, buttons, illustrations, diagrams **as SVG/CSS/HTML** | `assets` | Codex → Gemini → Copilot |
+| documentation | `docs` | Copilot → Gemini → cheap Claude → local |
+| review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
+| company data | `data` | local only |
+
+Raster images (PNG/JPG) are not produced by these CLIs; that would need an image-API adapter and is
+deliberately out of scope for v1. Override any card with `assigned_to`.
 
 ## Configuration
 
@@ -77,6 +94,10 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 No secrets in the file; use `${ENV_VAR}`. Routing: a task goes to the first model in
 `by_role[role]` that is also in `by_privacy[privacy]` and passed the probe. `local-only` tasks never
 leave your Ollama.
+
+Gates (`gates.before_review`, `gates.after_merge` in council.json) are shell commands run in the
+task worktree before review and on the base branch after merge; results land in
+`.council/reports/<id>/gates-*.json`.
 
 Budget per task: 20 min soft / 25 min hard, 30 agent turns (Ollama). A task that ends without a
 final `done|blocked|failed` report is `failed: no_final_report`.

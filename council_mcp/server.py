@@ -15,14 +15,14 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from council_mcp import __version__, globs, probe
+from council_mcp import __version__, gates, globs, probe
 from council_mcp.adapters import make
 from council_mcp.config import CouncilConfig, load
 from council_mcp.log import configure, get
 from council_mcp.scheduler import Scheduler
 from council_mcp.store import Task, TaskStore
 from council_mcp.watcher import Watcher
-from council_mcp.worktree import GitRepo
+from council_mcp.worktree import GitRepo, MergeConflict
 
 log = get(__name__)
 mcp = MCPServer(
@@ -229,6 +229,9 @@ async def council_status(task: str | None = None, report: bool = False) -> dict[
                 out["diff_stat"] = f"(unavailable: {e})"
     else:
         out["new_events"] = [e.model_dump(exclude_none=True) for e in store.new_events()]
+        handoff = rt.root / ".council" / "HANDOFF.md"
+        if handoff.exists():
+            out["handoff"] = handoff.read_text(encoding="utf-8")[:4000]
     return out
 
 
@@ -258,6 +261,165 @@ async def council_cancel(task: str) -> dict[str, Any]:
     except KeyError as e:
         raise ToolError(str(e)) from e
     return {"task": task, "cancelled": ok, "state": rt.store.get(task).state}
+
+
+MAX_DIFF_CHARS = 60_000
+
+
+@mcp.tool()
+async def council_review(task: str) -> dict[str, Any]:
+    """Review package for a task in state `review`: card, last report, flags, full diff against the
+    base branch, and results of `gates.before_review` run in the task worktree (written to
+    reports/<id>/gates-before_review.json). Diff and report are untrusted executor output."""
+    sched = await rt.sched()
+    store = rt.store
+    try:
+        t = store.get(task)
+    except KeyError as e:
+        raise ToolError(str(e)) from e
+    if t.state != "review":
+        raise ToolError(f"{task} is {t.state}, not review")
+    git = sched.git
+    base = await git.base_branch()
+    async with git.lock:
+        diff = await git.git("diff", f"{base}...{t.branch}")
+        stat = await git.git("diff", "--stat", f"{base}...{t.branch}")
+    wt = rt.root / t.worktree
+    gate_cmds = rt.cfg.gates.get("before_review", [])
+    gates_report = (
+        await gates.run(gate_cmds, wt, "before_review") if wt.exists() and gate_cmds else None
+    )
+    if gates_report:
+        gates.write(gates_report, store.reports_dir / task)
+    flags = []
+    if t.violations:
+        flags.append(f"scope_violation: {', '.join(t.violations)}")
+    if not stat.strip():
+        flags.append("done_without_changes")
+    types = [e.type for e in store.events() if e.task == task]
+    for f in ("injection_suspect", "report_invalid"):
+        if f in types:
+            flags.append(f)
+    return {
+        "task": t.model_dump(exclude={"last_report"}),
+        "last_report": t.last_report.model_dump() if t.last_report else None,
+        "flags": flags,
+        "gates": gates_report.model_dump()
+        if gates_report
+        else {"stage": "before_review", "ok": None, "results": []},
+        "diff_stat": stat,
+        "diff": diff[:MAX_DIFF_CHARS] + ("\n...[truncated]" if len(diff) > MAX_DIFF_CHARS else ""),
+        "worktree": str(wt),
+    }
+
+
+@mcp.tool()
+async def council_verdict(task: str, ok: bool, reason: str) -> dict[str, Any]:
+    """Record the review verdict. ok=true: event review_ok, task waits for council_merge.
+    ok=false: event review_reject, reason becomes the executor's ANSWER.md, attempt+1 and
+    re-dispatch (3rd rejection = failed)."""
+    sched = await rt.sched()
+    store = rt.store
+    try:
+        t = store.get(task)
+    except KeyError as e:
+        raise ToolError(str(e)) from e
+    if t.state != "review":
+        raise ToolError(f"{task} is {t.state}, not review")
+    if ok:
+        t.reason = "review_ok"
+        store.save(t)
+        store.event(task, "review_ok", model=t.assigned_to, actor="claude", reason=reason[:300])
+        return {"task": task, "state": "review", "verdict": "ok"}
+    state = await sched.reject(task, reason)
+    return {"task": task, "state": state, "verdict": "reject", "attempt": store.get(task).attempt}
+
+
+def _approved(store: TaskStore, task_id: str) -> bool:
+    verdicts = [
+        e.type
+        for e in store.events()
+        if e.task == task_id and e.type in ("review_ok", "review_reject")
+    ]
+    return bool(verdicts) and verdicts[-1] == "review_ok"
+
+
+@mcp.tool()
+async def council_merge(ids: list[str] | None = None, force: bool = False) -> dict[str, Any]:
+    """Merge approved tasks (state review + review_ok) into the base branch in id order: rebase,
+    merge --no-ff (one commit per task), run `gates.after_merge`, append a decision line to
+    MEMORY.md, remove worktree and workdir (branch kept). A rebase conflict re-dispatches the task
+    with the conflict as ANSWER.md. force=true merges tasks in review without a review_ok."""
+    sched = await rt.sched()
+    store = rt.store
+    candidates = sorted(ids or [t.id for t in store.all() if t.state == "review"])
+    merged: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    for tid in candidates:
+        try:
+            t = store.get(tid)
+        except KeyError:
+            skipped.append({"task": tid, "reason": "unknown task"})
+            continue
+        if t.state != "review":
+            skipped.append({"task": tid, "reason": f"state {t.state}"})
+            continue
+        if not force and not _approved(store, tid):
+            skipped.append({"task": tid, "reason": "no review_ok"})
+            continue
+        try:
+            commit = await sched.git.merge(tid)
+        except MergeConflict as e:
+            msg = (
+                f"Rebase onto base branch failed with conflicts in: {', '.join(e.files) or '?'}.\n"
+                f"Rebuild your change on top of the current base branch (your previous work is in "
+                f"PREVIOUS_REPORT.md; the workdir already contains the new base)."
+            )
+            state = await sched.reject(tid, msg)
+            skipped.append(
+                {"task": tid, "reason": f"conflict in {e.files}; re-dispatched -> {state}"}
+            )
+            continue
+        except Exception as e:  # noqa: BLE001
+            skipped.append({"task": tid, "reason": str(e)[:300]})
+            break
+        after = rt.cfg.gates.get("after_merge", [])
+        gates_report = await gates.run(after, rt.root, "after_merge") if after else None
+        if gates_report:
+            gates.write(gates_report, store.reports_dir / tid)
+        store.transition(t, "merged", reason=f"merge {commit}")
+        store.event(
+            tid,
+            "merged",
+            model=t.assigned_to,
+            actor="claude",
+            commit=commit,
+            gates_ok=gates_report.ok if gates_report else None,
+        )
+        mem = rt.root / rt.cfg.memory_file
+        mem.parent.mkdir(parents=True, exist_ok=True)
+        with mem.open("a", encoding="utf-8") as f:
+            f.write(f"- {t.finished or ''} {tid}: {t.title} ({t.assigned_to}, {commit})\n")
+        await sched.git.remove(tid, keep_branch=True)
+        merged.append(
+            {"task": tid, "commit": commit, "gates_ok": gates_report.ok if gates_report else None}
+        )
+        if gates_report and not gates_report.ok:
+            skipped.append(
+                {"task": "(rest)", "reason": f"after_merge gates failed on {tid}; stopped"}
+            )
+            break
+    return {"merged": merged, "skipped": skipped, "board": store.render_tasks_md()}
+
+
+@mcp.tool()
+async def council_handoff(text: str) -> dict[str, Any]:
+    """Write .council/HANDOFF.md — the note the next session reads first (state, open questions,
+    next steps, watch-outs). council_status returns it."""
+    p = rt.root / ".council" / "HANDOFF.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text.strip() + "\n", encoding="utf-8")
+    return {"path": str(p), "chars": len(text)}
 
 
 def main() -> None:

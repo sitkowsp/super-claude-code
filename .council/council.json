@@ -1,28 +1,172 @@
 {
   "version": 1,
   "max_parallel": 3,
-  "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
+  "budget": {
+    "soft_minutes": 20,
+    "hard_minutes": 25,
+    "max_turns": 30
+  },
   "models": {
-    "local":   {"adapter": "ollama", "url": "${COUNCIL_OLLAMA_URL}", "model": "qwen3:8b",
-                "num_ctx": 16384, "max_parallel": 1,
-                "roles": ["implement", "review", "data"], "privacy": ["public", "internal", "local-only"]},
-    "codex":   {"adapter": "codex", "cmd": "codex", "max_parallel": 2,
-                "roles": ["implement", "refactor", "review"], "privacy": ["public"]},
-    "copilot": {"adapter": "copilot", "cmd": "copilot", "max_parallel": 2,
-                "roles": ["implement", "docs", "review"], "privacy": ["public"]},
-    "gemini":  {"adapter": "gemini", "cmd": "gemini", "max_parallel": 2,
-                "roles": ["implement", "docs", "review"], "privacy": ["public"]},
-    "cheap":   {"adapter": "claude-sub", "cmd": "claude", "model": "haiku", "max_parallel": 2,
-                "roles": ["chores", "docs"], "privacy": ["public", "internal"]}
+    "local": {
+      "adapter": "ollama",
+      "url": "${COUNCIL_OLLAMA_URL}",
+      "model": "qwen3:8b",
+      "num_ctx": 16384,
+      "max_parallel": 1,
+      "roles": [
+        "implement",
+        "review",
+        "data",
+        "docs",
+        "chores"
+      ],
+      "privacy": [
+        "public",
+        "internal",
+        "local-only"
+      ]
+    },
+    "codex": {
+      "adapter": "codex",
+      "cmd": "codex",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "refactor",
+        "assets",
+        "review"
+      ],
+      "privacy": [
+        "public"
+      ]
+    },
+    "copilot": {
+      "adapter": "copilot",
+      "cmd": "copilot",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "refactor",
+        "docs",
+        "assets",
+        "review",
+        "chores"
+      ],
+      "privacy": [
+        "public"
+      ]
+    },
+    "gemini": {
+      "adapter": "gemini",
+      "cmd": "gemini",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "docs",
+        "assets",
+        "review"
+      ],
+      "privacy": [
+        "public"
+      ]
+    },
+    "cheap": {
+      "adapter": "claude-sub",
+      "cmd": "claude",
+      "model": "haiku",
+      "max_parallel": 2,
+      "roles": [
+        "chores",
+        "docs"
+      ],
+      "privacy": [
+        "public",
+        "internal"
+      ]
+    }
   },
   "routing": {
-    "by_privacy": {"local-only": ["local"], "internal": ["local", "cheap"],
-                   "public": ["codex", "copilot", "gemini", "cheap", "local"]},
-    "by_role":    {"implement": ["codex", "copilot", "gemini", "local"], "refactor": ["codex"],
-                   "docs": ["copilot", "gemini", "cheap"], "review": ["copilot", "codex", "local"],
-                   "chores": ["cheap"], "data": ["local"]},
-    "second_opinion": ["copilot", "codex", "local"]
+    "by_privacy": {
+      "local-only": [
+        "local"
+      ],
+      "internal": [
+        "local",
+        "cheap"
+      ],
+      "public": [
+        "codex",
+        "copilot",
+        "gemini",
+        "cheap",
+        "local"
+      ]
+    },
+    "by_role": {
+      "implement": [
+        "codex",
+        "copilot",
+        "gemini",
+        "local"
+      ],
+      "refactor": [
+        "codex",
+        "copilot"
+      ],
+      "assets": [
+        "codex",
+        "gemini",
+        "copilot"
+      ],
+      "docs": [
+        "copilot",
+        "gemini",
+        "cheap",
+        "local"
+      ],
+      "review": [
+        "local",
+        "copilot",
+        "codex",
+        "gemini"
+      ],
+      "chores": [
+        "local",
+        "cheap",
+        "copilot"
+      ],
+      "data": [
+        "local"
+      ]
+    },
+    "second_opinion": [
+      "local",
+      "gemini",
+      "copilot",
+      "codex"
+    ]
   },
-  "never_share": [".env", ".env.*", "*.pem", "*.key", "*.p12", "*.sql", "*.dump", "*.bak", "secrets/**"],
-  "memory_file": ".council/MEMORY.md"
+  "never_share": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "*.p12",
+    "*.sql",
+    "*.dump",
+    "*.bak",
+    "secrets/**"
+  ],
+  "memory_file": ".council/MEMORY.md",
+  "gates": {
+    "before_review": [
+      "uv run ruff check .",
+      "uv run pytest -q"
+    ],
+    "after_merge": [
+      "uv run ruff check .",
+      "uv run mypy",
+      "uv run pytest -q"
+    ]
+  }
 }

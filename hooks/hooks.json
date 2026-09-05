@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT}\" council events --root \"${CLAUDE_PROJECT_DIR}\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

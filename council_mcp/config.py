@@ -13,7 +13,9 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-Role = Literal["implement", "refactor", "docs", "review", "chores", "data", "contract", "adversary"]
+Role = Literal[
+    "implement", "refactor", "docs", "assets", "review", "chores", "data", "contract", "adversary"
+]
 Privacy = Literal["public", "internal", "local-only"]
 AdapterName = Literal["ollama", "gemini", "codex", "copilot", "grok", "claude-sub"]
 
@@ -70,6 +72,9 @@ class CouncilConfig(BaseModel):
     routing: Routing = Field(default_factory=Routing)
     never_share: list[str] = Field(default_factory=list)
     memory_file: str = ".council/MEMORY.md"
+    # gates: commands run in the task worktree before review ("before_review") and on main
+    # after merge ("after_merge"). Keys are free-form stages; DESIGN.md §14.5.
+    gates: dict[str, list[str]] = Field(default_factory=dict)
 
     @field_validator("models")
     @classmethod

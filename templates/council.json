@@ -16,7 +16,9 @@
       "roles": [
         "implement",
         "review",
-        "data"
+        "data",
+        "docs",
+        "chores"
       ],
       "privacy": [
         "public",
@@ -31,6 +33,7 @@
       "roles": [
         "implement",
         "docs",
+        "assets",
         "review"
       ],
       "privacy": [
@@ -43,7 +46,9 @@
       "max_parallel": 2,
       "roles": [
         "implement",
-        "refactor"
+        "refactor",
+        "assets",
+        "review"
       ],
       "privacy": [
         "public"
@@ -82,8 +87,11 @@
       "max_parallel": 2,
       "roles": [
         "implement",
+        "refactor",
         "docs",
-        "review"
+        "assets",
+        "review",
+        "chores"
       ],
       "privacy": [
         "public"
@@ -116,30 +124,40 @@
         "local"
       ],
       "refactor": [
-        "codex"
+        "codex",
+        "copilot"
+      ],
+      "assets": [
+        "codex",
+        "gemini",
+        "copilot"
       ],
       "docs": [
         "copilot",
         "gemini",
-        "cheap"
-      ],
-      "review": [
-        "grok",
-        "copilot",
-        "gemini",
+        "cheap",
         "local"
       ],
+      "review": [
+        "local",
+        "copilot",
+        "codex",
+        "gemini"
+      ],
       "chores": [
-        "cheap"
+        "local",
+        "cheap",
+        "copilot"
       ],
       "data": [
         "local"
       ]
     },
     "second_opinion": [
-      "grok",
+      "local",
       "gemini",
-      "local"
+      "copilot",
+      "codex"
     ]
   },
   "never_share": [
@@ -153,5 +171,9 @@
     "*.bak",
     "secrets/**"
   ],
-  "memory_file": ".council/MEMORY.md"
+  "memory_file": ".council/MEMORY.md",
+  "gates": {
+    "before_review": [],
+    "after_merge": []
+  }
 }

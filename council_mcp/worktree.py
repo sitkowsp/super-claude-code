@@ -47,6 +47,13 @@ class GitError(RuntimeError):
     pass
 
 
+class MergeConflict(GitError):
+    def __init__(self, task_id: str, files: list[str], detail: str) -> None:
+        super().__init__(f"{task_id}: rebase conflict in {files or 'unknown files'}")
+        self.files = files
+        self.detail = detail
+
+
 @dataclass
 class SyncResult:
     copied: list[str] = field(default_factory=list)
@@ -162,6 +169,32 @@ class GitRepo:
         async with self.lock:
             base = await self.base_branch()
             return await self.git("diff", "--stat", f"{base}...council/{task_id}")
+
+    async def merge(self, task_id: str) -> str:
+        """Rebase council/<id> onto the base branch and merge --no-ff into it (one merge commit
+        per task). On conflict: abort, leave everything as it was, raise MergeConflict."""
+        branch = f"council/{task_id}"
+        wt = self.root / ".council" / "worktrees" / task_id
+        async with self.lock:
+            base = await self.base_branch()
+            if not wt.exists():
+                await self.git("worktree", "add", str(wt), branch)
+            try:
+                await self.git("rebase", base, cwd=wt)
+            except GitError as e:
+                files = (
+                    await self.git("diff", "--name-only", "--diff-filter=U", cwd=wt, check=False)
+                ).split()
+                await self.git("rebase", "--abort", cwd=wt, check=False)
+                raise MergeConflict(task_id, files, str(e)) from e
+            head = (await self.git("rev-parse", "--abbrev-ref", "HEAD")).strip()
+            if head != base:
+                raise GitError(f"repo HEAD is on '{head}', expected '{base}' — switch first")
+            status = (await self.git("status", "--porcelain", "--untracked-files=no")).strip()
+            if status:
+                raise GitError("main worktree has uncommitted changes — commit or stash first")
+            await self.git("merge", "--no-ff", "-m", f"council: merge {task_id}", branch)
+            return (await self.git("rev-parse", "--short", "HEAD")).strip()
 
     async def remove(self, task_id: str, keep_branch: bool = True) -> None:
         wt = self.root / ".council" / "worktrees" / task_id
