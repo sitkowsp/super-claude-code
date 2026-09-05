@@ -1,0 +1,19 @@
+{
+  "name": "bug-hunt",
+  "description": "A bug nobody can see. Split hypotheses, not work: each model gets one hypothesis and the same repro via council_compare; Claude picks and implements the fix.",
+  "trigger": ["bug", "błąd", "crash", "fails", "nie działa", "regression", "flaky", "intermittent", "exception", "500"],
+  "claude_keeps": ["repro", "hypotheses", "final diagnosis", "fix implementation"],
+  "waves": [
+    {"n": 1, "tasks": [
+      {"role": "contract", "assign": "claude", "slice": "minimal repro + 3 hypotheses written as testable statements"}
+    ]},
+    {"n": 2, "parallel": true, "tasks": [
+      {"role": "review", "assign": "compare", "slice": "council_compare: same repro to 2-3 models, each confirms or refutes its hypothesis and proposes a fix WITHOUT implementing"},
+      {"role": "data", "assign": "local", "slice": "only if the repro needs company data (local-only)"}
+    ]},
+    {"n": 3, "tasks": [
+      {"role": "implement", "assign": "claude", "slice": "Claude implements the chosen fix (bug fixes are small and entangled) + regression test"}
+    ]}
+  ],
+  "notes": ["Use /council:compare in wave 2.", "Do not dispatch implement cards for the fix itself."]
+}

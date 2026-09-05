@@ -13,6 +13,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from council_mcp import stats
 from council_mcp.config import Budget
 from council_mcp.store import Task
 
@@ -36,8 +37,8 @@ def memory(repo_root: Path, memory_file: str) -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
-def task_md(task: Task, budget: Budget) -> str:
-    return _env.get_template("TASK.md.j2").render(task=task, budget=budget)
+def task_md(task: Task, budget: Budget, lessons: list[str] | None = None) -> str:
+    return _env.get_template("TASK.md.j2").render(task=task, budget=budget, lessons=lessons or [])
 
 
 def agents_md(repo_root: Path) -> str:
@@ -61,7 +62,10 @@ def write_all(
 ) -> dict[str, Path]:
     """Write TASK.md (+ AGENTS.md/GEMINI.md/MEMORY.md) into the executor workdir."""
     out: dict[str, Path] = {}
-    (workdir / "TASK.md").write_text(task_md(task, budget), encoding="utf-8")
+    lessons = (
+        stats.lessons_for(repo_root, task.assigned_to or "", task.role) if task.assigned_to else []
+    )
+    (workdir / "TASK.md").write_text(task_md(task, budget, lessons), encoding="utf-8")
     out["task"] = workdir / "TASK.md"
     mem = memory(repo_root, memory_file)
     if mem:

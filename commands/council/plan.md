@@ -6,7 +6,9 @@ argument-hint: <goal>
 Goal: $ARGUMENTS
 
 1. Read `.council/MEMORY.md` (if present) and the relevant parts of the repo.
-2. Call `council_models` to see which executors are available and their roles/privacy.
+2. Call `council_models` (available executors) and `council_playbooks(goal)` (which pattern fits and
+   why; `--playbook <name>` in $ARGUMENTS forces one). Follow the selected playbook's waves as a
+   pattern; Claude keeps what `claude_keeps` lists.
 3. Design 1–4 task cards with **disjoint `scope`** (globs the executor may change), read-only
    `context_files`, a one-sentence `goal`, checkable `acceptance`, `role` and `privacy`.
    Rules: `privacy: internal` if scope/context touches config, secrets-adjacent or company-specific

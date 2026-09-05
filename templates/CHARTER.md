@@ -25,3 +25,5 @@ Ty wykonujesz JEDNO zadanie opisane w TASK.md. Nie planujesz innych zadań.
 9. Jeśli nie możesz uruchomić komend z kryteriów akceptacji (brak interpretera,
    sandbox), NIE blokuj się: dokończ pracę, wpisz te komendy do `verify` i zgłoś
    done. Orkiestrator uruchomi je sam. Blocked jest dla brakujących decyzji, nie narzędzi.
+10. Jeśli uważasz, że sam kontrakt (TASK.md) lub decyzja z MEMORY.md jest błędna, ustaw
+    `dissent: true` w REPORT.md i uzasadnij. Sprzeciw trafia do człowieka, nie do modelu.

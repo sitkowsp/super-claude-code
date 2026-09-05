@@ -1,6 +1,6 @@
 # Super Claude Code — plugin `council` · projekt wykonawczy v1.0
 
-2026-09-05 (rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
+2026-09-05 (rev. 3.5: faza 2b — trust, defects_after_merge, LESSONS.md, playbooki, compare, why, dissent; rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
 Ten dokument jest jedynym źródłem prawdy. W Claude Code leży jako `DESIGN.md`. Jeśli implementacja odbiega od dokumentu — poprawia się dokument w tym samym commicie.
 
 ---
@@ -763,7 +763,7 @@ Przed `uv init`, przed pierwszą linią kodu:
 | **0** | `config.py`, adaptery `ollama` (`ask`) i generyczny `cli` (`probe`/`ask` dla gemini/codex/grok/claude-sub), `probe.py`, `server.py` (`council_models`, `council_ask`, `council_probe`), `.mcp.json`, `templates/{CHARTER.md,council.json}`, testy na `respx`, README, przegląd 2 modelami (§18) | 1 | **wykonana 2026-09-05** |
 | **0.5** | CI (19.6), `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, repo publiczne; 16.15 (council recenzuje council przez `council_ask`) | 1 | **pliki gotowe 2026-09-05**; publikacja repo i 16.15 — czekają na decyzję użytkownika |
 | **1** | katalog pracy bez `.git` + sync + egzekucja scope (19.1), lock git (19.2), `store.py`, `scheduler.py` (+`depends_on`, fale), `watcher.py`, `render.py`, `council_dispatch/status/cancel`, pętla agentowa Ollama, adapter Gemini `run`, komendy `plan/run/status/stop`, migawki, `HANDOFF.md`, `actor`+`reason` w zdarzeniach (19.4), treść niezaufana (16.8), `council init/doctor` | 3 | **wykonana 2026-09-05** (1 sesja; bez `HANDOFF.md` i bez adaptera Gemini `run` — brak CLI; `council_answer` przeniesione tu z fazy 2). DoD: codex + local równolegle → `review`, blocked→answer→resume działa |
-| **2** | `blocked`→`ANSWER.md` (19.3), Codex/Grok-CLI/claude-sub `run`, `council_plan_validate`, subagenci planner/reviewer/integrator, `review`/`merge`, hook `UserPromptSubmit`, gates (14.5), `trust` + `defects_after_merge` (19.8), playbooki `feature`/`bug-hunt`/`data-internal`, `/council:compare`, `/council:why`, `LESSONS.md` | 4 | **2a wykonana 2026-09-05**: `council_review/verdict/merge/handoff`, gates `before_review`/`after_merge`, agenci planner/reviewer/integrator, hook, `HANDOFF.md`, walidacja planu w `council_plan`. **2b otwarte**: `trust`, `defects_after_merge`, playbooki, `/council:compare`, `/council:why`, `LESSONS.md`, test żywy review→merge |
+| **2** | `blocked`→`ANSWER.md` (19.3), Codex/Grok-CLI/claude-sub `run`, `council_plan_validate`, subagenci planner/reviewer/integrator, `review`/`merge`, hook `UserPromptSubmit`, gates (14.5), `trust` + `defects_after_merge` (19.8), playbooki `feature`/`bug-hunt`/`data-internal`, `/council:compare`, `/council:why`, `LESSONS.md` | 4 | **2a wykonana 2026-09-05**: `council_review/verdict/merge/handoff`, gates `before_review`/`after_merge`, agenci planner/reviewer/integrator, hook, `HANDOFF.md`, walidacja planu w `council_plan`. **2b wykonana 2026-09-05**: `trust` (stats.json, awans/degradacja, `probation_over_limit`), `council_defect` + `defects_after_merge`, `LESSONS.md` wstrzykiwane do TASK.md, playbooki `feature`/`bug-hunt`/`data-internal` + `council_playbooks`, `council_compare`, `council_why`, `council_stats`, `dissent` w REPORT. **Otwarte**: test żywy review→merge, szacunek solo vs council (16.10), `/council:analyze` (14.3), `/council:inbox` |
 | **3** | dokumentacja użytkownika (§12, EN), pozostałe playbooki, `council bench/night/report`, profile, `council_recall`, `/council:spec|architect|docs`, epiki, tag `v1.0` | 3 | — |
 | **4** | strojenie routingu na `stats`, CI dla repo docelowych, `council export-audit` | po miesiącu użycia | — |
 
@@ -777,12 +777,27 @@ Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
 - **Wznowienie po `blocked`**: poprzedni raport trafia do workdir jako `PREVIOUS_REPORT.md` (nie `REPORT.md` — watcher czytałby go jako nowy raport). `ANSWER.md` obok.
 - **GitHub Copilot CLI** (`copilot -p --allow-all-tools --allow-all-paths`) dostępny i zalogowany przez `gh` — dodany jako adapter `copilot` (rola implement/docs/review). Gemini CLI nadal niezainstalowany.
 
+### 19.14 Grafika rastrowa z CLI (research + test żywy 2026-09-05, `docs/research-image-generation-2026-09.md`)
+
+- **Codex CLI generuje PNG na loginie ChatGPT** (wbudowane narzędzie `image_gen`, gpt-image-2). Test żywy: `codex exec -s workspace-write -c approval_policy=never -C <dir> "…zapisz jako gear.png w bieżącym katalogu"` → poprawny PNG 256×256 z alfą w katalogu roboczym. Domyślnie obrazy lądują w `~/.codex/generated_images/`, więc prompt musi kazać skopiować do workdir — dodane do `prompt_cli.j2` dla roli `assets`. Koszt: 3–5× limitu tury tekstowej. Zgłaszane awarie narzędzia (issues) → watcher/reviewer sprawdza plik na dysku, nie wierzy raportowi (`done_without_changes` już to łapie).
+- **Gemini CLI**: brak wbudowanego narzędzia; rozszerzenie `nanobanana` wymaga płatnego `NANOBANANA_API_KEY`. Wg researchu Google zakończył „Login with Google" dla kont indywidualnych w Gemini CLI (2026-06-18) — konto Google **nie** zaloguje CLI; potrzebny `GEMINI_API_KEY`. Do potwierdzenia przez użytkownika przy próbie logowania.
+- **Copilot CLI**: brak generowania obrazów.
+- Decyzja: rola `assets` = codex → gemini → copilot bez zmian; rastry robi wyłącznie Codex; adapter obrazów na API (faza 3, opcjonalny) tylko jeśli Codex okaże się zawodny.
+
+### 19.13 Faza 2b — uszczegółowienia względem §15–16
+
+- `trust` żyje w `.council/stats.json` (nie w `council.json`, bo to stan, nie konfiguracja); polityka (`promote_after`=3, `demote_after`=2, `probation_max_lines`=150, `initial`) w `council.json` → `trust`. Awans liczy tylko `review_ok` **za pierwszym podejściem**; degradacja po 2 odrzuceniach z rzędu; defekt po merge = zawsze jeden poziom w dół (19.8). Egzekucja: `council_review` zwraca `trust`, `second_opinion_required` (probation lub >200 linii) i flagę `probation_over_limit`; reviewer respektuje, system nie blokuje twardo (człowiek może zaakceptować).
+- `LESSONS.md`: `- [model/rola] zasada` (rola `*` = dla wszystkich ról modelu); `render.write_all` dokleja do TASK.md ostatnie 10 lekcji dla pary model/rola. `council distill` (16.12) → faza 3.
+- Playbooki: JSON w `playbooks/` (dostarczone) i `.council/playbooks/` (użytkownika, nadpisują po nazwie). Wybór = liczba trafionych fraz `trigger` w treści celu; remis → alfabetycznie; brak → `feature`. `assign` w wave to podpowiedź (`claude`, nazwa modelu, `by_role`, `compare`), routing i tak decyduje `council.json`.
+- `dissent`: pole w front-matter REPORT (`dissent: true`), event `dissent`, flaga w `council_review`; reviewer ma zakaz przegłosowania — pokazuje użytkownikowi. `/council:inbox` (16.5) jeszcze nie ma; na razie `council_status` + flaga.
+- `council_compare` = równoległe `council_ask` do listy modeli (domyślnie `second_opinion`), event `compare` z zadaniem `-`.
+
 ### 19.12 Routing wg typu zadania (decyzja użytkownika 2026-09-05)
 
 | Typ pracy | Rola | Kolejność modeli (`by_role`) | Dlaczego |
 |---|---|---|---|
 | kod, refaktor | `implement`, `refactor` | codex → copilot → gemini → local | Codex (ChatGPT) najlepszy w kodzie z kontraktem; local tylko gdy nic innego |
-| grafika: ikony, logo, przyciski, ilustracje, diagramy | **`assets`** (nowa) | codex → gemini → copilot | ChatGPT/Gemini robią to dobrze — **jako SVG/CSS/HTML**. Rastry (PNG/JPG) są poza zasięgiem CLI; wymagałyby adaptera na API obrazów (nie subskrypcja) — świadomie odłożone |
+| grafika: ikony, logo, przyciski, ilustracje, diagramy | **`assets`** (nowa) | codex → gemini → copilot | SVG/CSS/HTML — każdy; **PNG/JPG — Codex** (wbudowany `image_gen` na loginie ChatGPT, potwierdzone testem, 19.14) |
 | dokumentacja | `docs` | copilot → gemini → cheap → local | Copilot pisze dokumentację przy kodzie |
 | przegląd, druga opinia | `review`, `second_opinion` | **local** → copilot → codex → gemini | lokalna Ollama jako pierwsza: zero kosztu tokenów; chmura gdy local niedostępny |
 | drobne prace | `chores` | local → cheap → copilot | jak wyżej — oszczędność tokenów |

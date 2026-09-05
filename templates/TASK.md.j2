@@ -17,7 +17,10 @@
 {% for a in task.acceptance %}- {{ a }}
 {% else %}- (brak — kieruj się celem)
 {% endfor %}
-## Format REPORT.md (dosłownie; nadpisuj plik w katalogu roboczym)
+{% if lessons %}## Lekcje z poprzednich zadań (obowiązują)
+{% for l in lessons %}- {{ l }}
+{% endfor %}
+{% endif %}## Format REPORT.md (dosłownie; nadpisuj plik w katalogu roboczym)
 
 ```markdown
 ---
@@ -27,6 +30,7 @@ percent: 0-100
 touched: [lista plików]
 needs: [pytania, tylko przy blocked]
 verify: [jak sprawdzić, tylko przy done]
+dissent: false   # true tylko gdy sprzeciwiasz się kontraktowi/decyzji — uzasadnij w treści
 ---
 Wolny tekst: co zrobione, co dalej.
 ```

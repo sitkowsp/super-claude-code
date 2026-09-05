@@ -13,6 +13,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from council_mcp.stats import TrustPolicy
+
 Role = Literal[
     "implement", "refactor", "docs", "assets", "review", "chores", "data", "contract", "adversary"
 ]
@@ -75,6 +77,7 @@ class CouncilConfig(BaseModel):
     # gates: commands run in the task worktree before review ("before_review") and on main
     # after merge ("after_merge"). Keys are free-form stages; DESIGN.md §14.5.
     gates: dict[str, list[str]] = Field(default_factory=dict)
+    trust: TrustPolicy = Field(default_factory=TrustPolicy)
 
     @field_validator("models")
     @classmethod

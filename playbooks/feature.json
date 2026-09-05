@@ -1,0 +1,21 @@
+{
+  "name": "feature",
+  "description": "New feature in an existing application. Default playbook: few waves, Claude keeps the seams.",
+  "trigger": ["feature", "add", "dodaj", "nowa funkcja", "endpoint", "flag", "option", "opcja"],
+  "claude_keeps": ["change contract (what changes in API/model, what does not)", "integration", "merge"],
+  "waves": [
+    {"n": 1, "tasks": [
+      {"role": "contract", "assign": "claude", "slice": "one card: what changes in API/data model/UI, what must not change; acceptance commands"}
+    ]},
+    {"n": 2, "parallel": true, "tasks": [
+      {"role": "implement", "assign": "by_role", "slice": "backend/logic per the contract, with tests"},
+      {"role": "implement", "assign": "by_role", "slice": "UI per the contract, only if the feature has UI (disjoint scope from backend)"},
+      {"role": "docs", "assign": "by_role", "slice": "user-facing docs / README / changelog entry"}
+    ]},
+    {"n": 3, "tasks": [
+      {"role": "review", "assign": "by_role", "slice": "second opinion on the implement diff when > 200 lines"},
+      {"role": "integration", "assign": "claude", "slice": "glue, wiring, merge in id order"}
+    ]}
+  ],
+  "notes": ["Prefer depends_on over shared files.", "Executors get self-contained leaves; Claude owns interfaces."]
+}

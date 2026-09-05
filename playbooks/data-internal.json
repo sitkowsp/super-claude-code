@@ -1,0 +1,19 @@
+{
+  "name": "data-internal",
+  "description": "Report or analysis on company data. Everything local-only; reports contain aggregates only.",
+  "trigger": ["report", "raport", "analysis", "analiza", "database", "baza", "sql", "export", "dane", "data"],
+  "claude_keeps": ["business question → field/rule spec (no data)", "result review", "presentation"],
+  "waves": [
+    {"n": 1, "tasks": [
+      {"role": "contract", "assign": "claude", "slice": "spec of fields, filters, aggregation rules, output format — without any data"}
+    ]},
+    {"n": 2, "tasks": [
+      {"role": "data", "assign": "local", "slice": "SQL/extraction/analysis in the sandbox with data; REPORT contains aggregates only", "privacy": "local-only"}
+    ]},
+    {"n": 3, "parallel": true, "tasks": [
+      {"role": "implement", "assign": "by_role", "slice": "only if the result becomes code (export, job): like `feature`, with NO data in scope"},
+      {"role": "docs", "assign": "by_role", "slice": "method description for the report consumer"}
+    ]}
+  ],
+  "notes": ["privacy: local-only on every card that touches data.", "never_share must cover dumps and SQL files."]
+}

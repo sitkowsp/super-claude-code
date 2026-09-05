@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from council_mcp import render
+from council_mcp import render, stats
 from council_mcp.adapters import make
 from council_mcp.adapters.base import Adapter, RunHandle
 from council_mcp.config import CouncilConfig
@@ -71,6 +71,10 @@ class Scheduler:
             model = self.pick_model(task)
             task.assigned_to = model
             self.store.save(task)
+            if task.state == "queued":
+                st = stats.load(self.root)
+                st.get(model, self.cfg.trust.initial).tasks += 1
+                stats.save(self.root, st)
             self.jobs[tid] = asyncio.ensure_future(self._job(tid, model))
             started.append(tid)
         return started

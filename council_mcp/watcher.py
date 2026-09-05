@@ -96,6 +96,10 @@ class Watcher:
                 actor="model",
                 snippet=rep.body[:200],
             )
+        if rep.dissent:
+            self.store.event(
+                task.id, "dissent", model=task.assigned_to, actor="model", reason=rep.body[:300]
+            )
         self.store.store_report(task, raw, rep.status)
         task.last_report = rep
         sync = await self.git.sync_and_snapshot(

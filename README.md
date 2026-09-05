@@ -5,7 +5,7 @@ server that lets Claude Code plan, delegate, review and merge while other provid
 GitHub Copilot, Gemini, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
 isolated copy of your repo.
 
-**Status: Phase 2a.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
+**Status: Phase 2b.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
 dispatch → watch REPORT.md → snapshot commits on `council/<id>` → `blocked` → answer → resume →
 `review`. Review (gates + diff + verdict), merge (rebase, `--no-ff`, after-merge gates, MEMORY.md)
 and the reviewer/integrator subagents exist and are unit-tested; the live review→merge run is next.
@@ -36,7 +36,8 @@ instructions.
   - Ollama (local or remote) with a tool-capable model (`qwen3:8b` works on a laptop)
   - `npm i -g @openai/codex` (ChatGPT subscription; `codex login`)
   - `npm i -g @github/copilot` (Copilot subscription; authenticates via `gh auth login`)
-  - `npm i -g @google/gemini-cli` (run `gemini` once interactively and pick *Login with Google*)
+  - `npm i -g @google/gemini-cli` (needs `GEMINI_API_KEY`; Google reportedly ended individual
+    account login in the CLI in June 2026 — see `docs/research-image-generation-2026-09.md`)
   - `claude` itself as a cheap executor (`claude -p --model haiku`)
 
 ## Quick start
@@ -74,19 +75,39 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 | `council_verdict(task, ok, reason)` | `review_ok`, or reject → reason becomes ANSWER.md, attempt+1, re-dispatch |
 | `council_merge(ids?, force?)` | rebase + `merge --no-ff` in id order, `after_merge` gates, MEMORY.md line, cleanup |
 | `council_handoff(text)` | write `.council/HANDOFF.md` for the next session |
+| `council_defect(task, description, lesson?)` | record a post-merge defect: demotes the model's trust, adds a lesson |
+| `council_stats` | per-model stats and trust (`probation` → `standard` → `trusted`), LESSONS.md tail |
+| `council_why(task)` | the task's history with every automatic decision and its reason |
+| `council_compare(prompt, models?, files?)` | same question to several models in parallel (bug-hunt, research) |
+| `council_playbooks(goal?, playbook?)` | list playbooks and pick the pattern for a goal (deterministic) |
 
 ## Who does what (default routing)
 
 | Work | role | goes to |
 |---|---|---|
 | code, refactors | `implement`, `refactor` | Codex → Copilot → Gemini → local |
-| icons, logos, buttons, illustrations, diagrams **as SVG/CSS/HTML** | `assets` | Codex → Gemini → Copilot |
+| icons, logos, buttons, illustrations, diagrams (SVG/CSS/HTML; **PNG/JPG via Codex**) | `assets` | Codex → Gemini → Copilot |
 | documentation | `docs` | Copilot → Gemini → cheap Claude → local |
 | review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
 | company data | `data` | local only |
 
-Raster images (PNG/JPG) are not produced by these CLIs; that would need an image-API adapter and is
-deliberately out of scope for v1. Override any card with `assigned_to`.
+Raster images: Codex CLI has a built-in image tool that works on a ChatGPT Plus/Pro login and saves
+PNGs into the task workdir (verified; see `docs/research-image-generation-2026-09.md`). Gemini CLI
+needs a paid API key for images; Copilot CLI has none. Override any card with `assigned_to`.
+
+## Trust, lessons, playbooks
+
+Every model starts on **probation**: small cards, a second opinion is required, merge only after
+review. Three first-pass approvals promote it; two consecutive rejections demote it; a defect found
+after merge (`/council:defect`) always demotes. State lives in `.council/stats.json`.
+
+Every rejection carries a one-line **lesson** (`.council/LESSONS.md`); the last ten lessons for that
+model and role are injected into its next TASK.md. Executors can raise `dissent: true` in a report
+when they object to the contract itself — that goes to you, not to another model.
+
+**Playbooks** (`playbooks/*.json`, override in `.council/playbooks/`) tell the planner how to split
+work: `feature` (default), `bug-hunt` (split hypotheses, `/council:compare`, Claude fixes),
+`data-internal` (everything local-only). Selection is keyword-based and explained.
 
 ## Configuration
 

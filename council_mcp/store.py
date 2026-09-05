@@ -34,6 +34,11 @@ EventType = Literal[
     "merged",
     "cancelled",
     "injection_suspect",
+    "dissent",
+    "trust_promoted",
+    "trust_demoted",
+    "defect",
+    "compare",
 ]
 Actor = Literal["claude", "system", "model"]
 
@@ -77,6 +82,7 @@ class Report(BaseModel):
     touched: list[str] = Field(default_factory=list)
     needs: list[str] = Field(default_factory=list)
     verify: list[str] = Field(default_factory=list)
+    dissent: bool = False
     body: str = ""
 
     @classmethod
@@ -94,6 +100,8 @@ class Report(BaseModel):
         for k in ("touched", "needs", "verify"):
             if isinstance(data.get(k), str):
                 data[k] = [data[k]]
+        if isinstance(data.get("dissent"), str):
+            data["dissent"] = data["dissent"].strip().lower() in ("true", "yes", "1")
         return cls.model_validate(data)
 
 

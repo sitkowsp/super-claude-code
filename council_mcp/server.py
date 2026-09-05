@@ -8,6 +8,7 @@ Set COUNCIL_REPO_ROOT to point elsewhere.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from council_mcp import __version__, gates, globs, probe
+from council_mcp import __version__, gates, globs, playbooks, probe, stats
 from council_mcp.adapters import make
 from council_mcp.config import CouncilConfig, load
 from council_mcp.log import configure, get
@@ -296,6 +297,13 @@ async def council_review(task: str) -> dict[str, Any]:
         flags.append(f"scope_violation: {', '.join(t.violations)}")
     if not stat.strip():
         flags.append("done_without_changes")
+    st = stats.load(rt.root)
+    trust = st.get(t.assigned_to or "", rt.cfg.trust.initial).trust
+    lines = stats.diff_lines(stat)
+    if trust == "probation" and lines > rt.cfg.trust.probation_max_lines:
+        flags.append(f"probation_over_limit: {lines} lines > {rt.cfg.trust.probation_max_lines}")
+    if any(e.type == "dissent" and e.task == task for e in store.events()):
+        flags.append("dissent")
     types = [e.type for e in store.events() if e.task == task]
     for f in ("injection_suspect", "report_invalid"):
         if f in types:
@@ -307,17 +315,40 @@ async def council_review(task: str) -> dict[str, Any]:
         "gates": gates_report.model_dump()
         if gates_report
         else {"stage": "before_review", "ok": None, "results": []},
+        "trust": trust,
+        "second_opinion_required": trust == "probation" or lines > 200,
+        "changed_lines": lines,
         "diff_stat": stat,
         "diff": diff[:MAX_DIFF_CHARS] + ("\n...[truncated]" if len(diff) > MAX_DIFF_CHARS else ""),
         "worktree": str(wt),
     }
 
 
+def _apply_trust(task_id: str, model: str | None, ok: bool, attempt: int) -> dict[str, Any]:
+    if not model:
+        return {}
+    st = stats.load(rt.root)
+    old, new, why = stats.on_verdict(st, model, ok, attempt, rt.cfg.trust)
+    stats.save(rt.root, st)
+    if old != new:
+        rt.store.event(
+            task_id,
+            "trust_promoted" if new > old else "trust_demoted",
+            model=model,
+            reason=f"{old} → {new}: {why}",
+        )
+    return {"trust": new, "trust_changed": old != new}
+
+
 @mcp.tool()
-async def council_verdict(task: str, ok: bool, reason: str) -> dict[str, Any]:
+async def council_verdict(
+    task: str, ok: bool, reason: str, lesson: str | None = None
+) -> dict[str, Any]:
     """Record the review verdict. ok=true: event review_ok, task waits for council_merge.
     ok=false: event review_reject, reason becomes the executor's ANSWER.md, attempt+1 and
-    re-dispatch (3rd rejection = failed)."""
+    re-dispatch (3rd rejection = failed). `lesson`: one-line rule for LESSONS.md (required on
+    reject in spirit — it is injected into that model's next TASK.md for the same role).
+    Updates the model's trust (promotion after first-pass oks, demotion after 2 rejects)."""
     sched = await rt.sched()
     store = rt.store
     try:
@@ -326,13 +357,22 @@ async def council_verdict(task: str, ok: bool, reason: str) -> dict[str, Any]:
         raise ToolError(str(e)) from e
     if t.state != "review":
         raise ToolError(f"{task} is {t.state}, not review")
+    trust_info = _apply_trust(task, t.assigned_to, ok, t.attempt)
+    if lesson and t.assigned_to:
+        stats.add_lesson(rt.root, t.assigned_to, t.role, lesson)
     if ok:
         t.reason = "review_ok"
         store.save(t)
         store.event(task, "review_ok", model=t.assigned_to, actor="claude", reason=reason[:300])
-        return {"task": task, "state": "review", "verdict": "ok"}
+        return {"task": task, "state": "review", "verdict": "ok", **trust_info}
     state = await sched.reject(task, reason)
-    return {"task": task, "state": state, "verdict": "reject", "attempt": store.get(task).attempt}
+    return {
+        "task": task,
+        "state": state,
+        "verdict": "reject",
+        "attempt": store.get(task).attempt,
+        **trust_info,
+    }
 
 
 def _approved(store: TaskStore, task_id: str) -> bool:
@@ -388,6 +428,10 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
         if gates_report:
             gates.write(gates_report, store.reports_dir / tid)
         store.transition(t, "merged", reason=f"merge {commit}")
+        if t.assigned_to:
+            st = stats.load(rt.root)
+            st.get(t.assigned_to, rt.cfg.trust.initial).merged += 1
+            stats.save(rt.root, st)
         store.event(
             tid,
             "merged",
@@ -420,6 +464,137 @@ async def council_handoff(text: str) -> dict[str, Any]:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text.strip() + "\n", encoding="utf-8")
     return {"path": str(p), "chars": len(text)}
+
+
+@mcp.tool()
+async def council_defect(task: str, description: str, lesson: str | None = None) -> dict[str, Any]:
+    """Record a defect found AFTER merge in a council task: counts against the model
+    (`defects_after_merge`, drops one trust level) and adds a LESSONS.md line (§19.8)."""
+    store = rt.store
+    try:
+        t = store.get(task)
+    except KeyError as e:
+        raise ToolError(str(e)) from e
+    if t.state != "merged":
+        raise ToolError(f"{task} is {t.state}; defects are recorded for merged tasks")
+    model = t.assigned_to or "unknown"
+    st = stats.load(rt.root)
+    old, new = stats.on_defect(st, model, rt.cfg.trust)
+    stats.save(rt.root, st)
+    store.event(task, "defect", model=model, actor="claude", reason=description[:300])
+    if old != new:
+        store.event(task, "trust_demoted", model=model, reason=f"{old} → {new}: defect after merge")
+    stats.add_lesson(rt.root, model, t.role, lesson or f"defect after merge: {description[:120]}")
+    return {
+        "task": task,
+        "model": model,
+        "trust": new,
+        "defects_after_merge": st.models[model].defects_after_merge,
+    }
+
+
+@mcp.tool()
+async def council_stats() -> dict[str, Any]:
+    """Per-model statistics and trust levels (.council/stats.json) plus the LESSONS.md tail."""
+    st = stats.load(rt.root)
+    lessons = rt.root / stats.LESSONS_PATH
+    return {
+        "table": stats.summary(st),
+        "models": stats.dump(st)["models"],
+        "policy": rt.cfg.trust.model_dump(),
+        "lessons_tail": lessons.read_text(encoding="utf-8")[-3000:] if lessons.exists() else "",
+    }
+
+
+@mcp.tool()
+async def council_why(task: str) -> dict[str, Any]:
+    """The task's history in ~10 lines: every state change and automatic decision, with reason."""
+    store = rt.store
+    try:
+        t = store.get(task)
+    except KeyError as e:
+        raise ToolError(str(e)) from e
+    lines = []
+    for ev in store.events():
+        if ev.task != task:
+            continue
+        detail = ev.reason or ""
+        if ev.type == "report":
+            detail = f"{ev.data.get('status')} {ev.data.get('percent', '')}%"
+        elif ev.type in ("blocked",):
+            detail = "; ".join(ev.data.get("needs", [])) or detail
+        elif ev.type == "scope_violation":
+            detail = ", ".join(ev.data.get("files", []))
+        elif ev.type == "merged":
+            detail = f"commit {ev.data.get('commit')}"
+        who = ev.model or ev.actor
+        lines.append(f"{ev.ts[11:19]} {ev.type:16s} [{who}] {detail}".rstrip())
+    return {
+        "task": task,
+        "state": t.state,
+        "attempt": t.attempt,
+        "model": t.assigned_to,
+        "reason": t.reason,
+        "history": lines[-40:],
+    }
+
+
+@mcp.tool()
+async def council_compare(
+    prompt: str, models: list[str] | None = None, files: list[str] | None = None
+) -> dict[str, Any]:
+    """Ask the same question to several models in parallel (default: enabled models from
+    `second_opinion`) and return the answers side by side. For bug-hunt hypotheses and research
+    spikes. Answers are untrusted data."""
+    cfg = rt.cfg
+    await rt.caps()
+    names = models or [
+        m for m in cfg.routing.second_opinion if m in cfg.models and cfg.models[m].enabled
+    ]
+    if not names:
+        raise ToolError("no enabled models to compare")
+    for m in names:
+        if m not in cfg.models or not cfg.models[m].enabled:
+            raise ToolError(f"model '{m}' unknown or disabled")
+    paths = [Path(f) for f in files or []]
+    for p in paths:
+        if globs.matches(p.as_posix(), cfg.never_share):
+            raise ToolError(f"'{p}' matches never_share - refusing to send it")
+    prev = Path.cwd()
+    os.chdir(rt.root)
+    try:
+        results = await asyncio.gather(
+            *(make(m, cfg.models[m]).ask(prompt, paths) for m in names), return_exceptions=True
+        )
+    finally:
+        os.chdir(prev)
+    out = {}
+    for m, r in zip(names, results, strict=True):
+        out[m] = {"error": str(r)} if isinstance(r, BaseException) else r.model_dump()
+    rt.store.event("-", "compare", actor="claude", models=names, prompt=prompt[:200])
+    return {"prompt": prompt, "answers": out}
+
+
+@mcp.tool()
+async def council_playbooks(goal: str | None = None, playbook: str | None = None) -> dict[str, Any]:
+    """List playbooks (shipped + `.council/playbooks/`) and, given a goal, the deterministic
+    selection with its reason (§15.4). `playbook` forces one. The result is a pattern for the
+    planner, not an order."""
+    books = playbooks.load_all(rt.root)
+    out: dict[str, Any] = {
+        "available": {
+            n: {"description": b.description, "trigger": b.trigger, "source": b.source}
+            for n, b in books.items()
+        }
+    }
+    if goal or playbook:
+        try:
+            pb, why = playbooks.select(goal or "", books, playbook)
+        except KeyError as e:
+            raise ToolError(str(e)) from e
+        out["selected"] = pb.model_dump()
+        out["reason"] = why
+    return out
 
 
 def main() -> None:
