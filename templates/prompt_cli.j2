@@ -2,6 +2,6 @@
 ---
 {% endif %}{% if resume %}Kontynuujesz zadanie {{ task.id }}. Przeczytaj TASK.md, swój poprzedni raport PREVIOUS_REPORT.md oraz ANSWER.md (odpowiedź orkiestratora) w tym katalogu i dokończ pracę. Nowy raport zapisuj do REPORT.md.{% else %}Wykonaj zadanie {{ task.id }} opisane w TASK.md w tym katalogu.{% endif %}
 Pracuj wyłącznie w tym katalogu, zmieniaj tylko pliki ze `scope`, nie używaj git.
-{% if task.role == "assets" %}Grafiki wektorowe zapisuj jako SVG/CSS. Jeśli zadanie wymaga plików rastrowych (PNG/JPG) i masz narzędzie do generowania obrazów, użyj go, a wynik SKOPIUJ do tego katalogu pod ścieżką ze `scope` (nie zostawiaj go w katalogu domowym) i sprawdź, że plik istnieje i ma poprawny rozmiar. Bez narzędzia do obrazów — zgłoś `blocked` z prośbą o SVG zamiast rastra.
+{% if task.role == "assets" %}Grafiki wektorowe zapisuj jako SVG/CSS. Jeśli zadanie wymaga plików rastrowych (PNG/JPG) i masz narzędzie do generowania obrazów, użyj go, a wynik SKOPIUJ do tego katalogu pod ścieżką ze `scope` (nie zostawiaj go w katalogu domowym ani w katalogu scratch narzędzia) i sprawdź, że plik istnieje i ma poprawny rozmiar. Bez narzędzia do obrazów — zgłoś `blocked` z prośbą o SVG zamiast rastra.
 {% endif %}
 Raportuj przez plik REPORT.md w formacie z TASK.md: najpierw status `plan`, po krokach `progress`, na końcu `done` (albo `blocked` z pytaniami w `needs`, albo `failed`). Zakończ pracę po zapisaniu raportu końcowego.

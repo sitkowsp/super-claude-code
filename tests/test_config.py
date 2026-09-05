@@ -13,14 +13,19 @@ def test_template_loads_and_expands_env(template_cfg: CouncilConfig) -> None:
 
 
 def test_routing_is_privacy_intersect_role(template_cfg: CouncilConfig) -> None:
-    assert template_cfg.candidates("implement", "public") == ["codex", "copilot", "gemini", "local"]
+    assert template_cfg.candidates("implement", "public") == [
+        "codex",
+        "antigravity",
+        "copilot",
+        "local",
+    ]
     assert template_cfg.candidates("implement", "local-only") == ["local"]
     assert template_cfg.candidates("refactor", "internal") == []  # no intersection = error later
 
 
 def test_disabled_model_leaves_routing(template_cfg: CouncilConfig) -> None:
     template_cfg.models["codex"].enabled = False
-    assert template_cfg.candidates("implement", "public") == ["copilot", "gemini", "local"]
+    assert template_cfg.candidates("implement", "public") == ["antigravity", "copilot", "local"]
 
 
 def test_unknown_key_rejected() -> None:

@@ -68,7 +68,8 @@
       ],
       "privacy": [
         "public"
-      ]
+      ],
+      "enabled": false
     },
     "cheap": {
       "adapter": "claude-sub",
@@ -83,6 +84,23 @@
         "public",
         "internal"
       ]
+    },
+    "antigravity": {
+      "adapter": "antigravity",
+      "cmd": "agy",
+      "model": "gemini-3.8-flash-high",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "refactor",
+        "docs",
+        "assets",
+        "review",
+        "chores"
+      ],
+      "privacy": [
+        "public"
+      ]
     }
   },
   "routing": {
@@ -96,6 +114,7 @@
       ],
       "public": [
         "codex",
+        "antigravity",
         "copilot",
         "gemini",
         "cheap",
@@ -105,27 +124,32 @@
     "by_role": {
       "implement": [
         "codex",
+        "antigravity",
         "copilot",
         "gemini",
         "local"
       ],
       "refactor": [
         "codex",
+        "antigravity",
         "copilot"
       ],
       "assets": [
         "codex",
+        "antigravity",
         "gemini",
         "copilot"
       ],
       "docs": [
         "copilot",
+        "antigravity",
         "gemini",
         "cheap",
         "local"
       ],
       "review": [
         "local",
+        "antigravity",
         "copilot",
         "codex",
         "gemini"
@@ -133,6 +157,7 @@
       "chores": [
         "local",
         "cheap",
+        "antigravity",
         "copilot"
       ],
       "data": [
@@ -141,9 +166,10 @@
     },
     "second_opinion": [
       "local",
-      "gemini",
+      "antigravity",
       "copilot",
-      "codex"
+      "codex",
+      "gemini"
     ]
   },
   "never_share": [

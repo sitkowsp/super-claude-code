@@ -2,7 +2,7 @@
 
 You have several AI subscriptions and one repo. `council` is a Claude Code plugin plus a small MCP
 server that lets Claude Code plan, delegate, review and merge while other providers' models (Codex,
-GitHub Copilot, Gemini, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
+Antigravity/Gemini, GitHub Copilot, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
 isolated copy of your repo.
 
 **Status: Phase 2b.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
@@ -36,8 +36,8 @@ instructions.
   - Ollama (local or remote) with a tool-capable model (`qwen3:8b` works on a laptop)
   - `npm i -g @openai/codex` (ChatGPT subscription; `codex login`)
   - `npm i -g @github/copilot` (Copilot subscription; authenticates via `gh auth login`)
-  - `npm i -g @google/gemini-cli` (needs `GEMINI_API_KEY`; Google reportedly ended individual
-    account login in the CLI in June 2026 — see `docs/research-image-generation-2026-09.md`)
+  - **Antigravity CLI** `agy` (Google account; the successor to Gemini CLI for individuals — install
+    from https://antigravity.google, run `agy` once to log in). Gemini CLI itself now needs an API key.
   - `claude` itself as a cheap executor (`claude -p --model haiku`)
 
 ## Quick start
@@ -85,15 +85,15 @@ Edit `.council/council.json` (models, routing, `never_share`), set `COUNCIL_OLLA
 
 | Work | role | goes to |
 |---|---|---|
-| code, refactors | `implement`, `refactor` | Codex → Copilot → Gemini → local |
-| icons, logos, buttons, illustrations, diagrams (SVG/CSS/HTML; **PNG/JPG via Codex**) | `assets` | Codex → Gemini → Copilot |
-| documentation | `docs` | Copilot → Gemini → cheap Claude → local |
+| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local |
+| icons, logos, buttons, illustrations, diagrams (SVG/CSS/HTML; **PNG/JPG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
+| documentation | `docs` | Copilot → Antigravity → cheap Claude → local |
 | review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
 | company data | `data` | local only |
 
-Raster images: Codex CLI has a built-in image tool that works on a ChatGPT Plus/Pro login and saves
-PNGs into the task workdir (verified; see `docs/research-image-generation-2026-09.md`). Gemini CLI
-needs a paid API key for images; Copilot CLI has none. Override any card with `assigned_to`.
+Raster images: Codex CLI (ChatGPT login) and Antigravity CLI (Google login) both have built-in image
+tools — verified live, see `docs/research-*.md`. Both save to their own scratch folder by default, so
+the task prompt names the workdir explicitly. Copilot CLI has none. Override any card with `assigned_to`.
 
 ## Trust, lessons, playbooks
 

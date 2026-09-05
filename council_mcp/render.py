@@ -70,7 +70,12 @@ def write_all(
     mem = memory(repo_root, memory_file)
     if mem:
         (workdir / "MEMORY.md").write_text(mem, encoding="utf-8")
-    name = {"codex": "AGENTS.md", "copilot": "AGENTS.md", "gemini": "GEMINI.md"}.get(adapter)
+    name = {
+        "codex": "AGENTS.md",
+        "copilot": "AGENTS.md",
+        "gemini": "GEMINI.md",
+        "antigravity": "AGENTS.md",
+    }.get(adapter)
     if name:
         (workdir / name).write_text(agents_md(repo_root), encoding="utf-8")
         out["charter"] = workdir / name

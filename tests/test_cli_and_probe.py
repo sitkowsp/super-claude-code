@@ -44,7 +44,7 @@ async def test_probe_all_disables_unavailable_and_writes_file(
         json={"models": [{"name": "qwen3-coder:30b"}]}
     )
     respx.get("http://ollama.test:11434/api/version").respond(json={"version": "x"})
-    for m in ("gemini", "codex", "copilot", "grok", "cheap"):
+    for m in ("gemini", "antigravity", "codex", "copilot", "grok", "cheap"):
         template_cfg.models[m].cmd = "definitely-not-a-real-cli-xyz"
     caps = await probe.probe_all(template_cfg)
     assert caps.models["local"].enabled

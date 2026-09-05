@@ -1,6 +1,6 @@
 # Super Claude Code — plugin `council` · projekt wykonawczy v1.0
 
-2026-09-05 (rev. 3.5: faza 2b — trust, defects_after_merge, LESSONS.md, playbooki, compare, why, dissent; rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
+2026-09-05 (rev. 3.6: adapter `antigravity` (agy) — następca Gemini CLI dla kont indywidualnych, generuje PNG (19.15); rev. 3.5: faza 2b — trust, defects_after_merge, LESSONS.md, playbooki, compare, why, dissent; rev. 3.4: faza 2 — review/verdict/merge, gates, hook, agenci, rola `assets`, routing wg typu zadania (19.12); rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
 Ten dokument jest jedynym źródłem prawdy. W Claude Code leży jako `DESIGN.md`. Jeśli implementacja odbiega od dokumentu — poprawia się dokument w tym samym commicie.
 
 ---
@@ -777,6 +777,14 @@ Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
 - **Wznowienie po `blocked`**: poprzedni raport trafia do workdir jako `PREVIOUS_REPORT.md` (nie `REPORT.md` — watcher czytałby go jako nowy raport). `ANSWER.md` obok.
 - **GitHub Copilot CLI** (`copilot -p --allow-all-tools --allow-all-paths`) dostępny i zalogowany przez `gh` — dodany jako adapter `copilot` (rola implement/docs/review). Gemini CLI nadal niezainstalowany.
 
+### 19.15 Antigravity CLI (`agy`) zamiast Gemini CLI (2026-09-05, `docs/research-antigravity-cli-2026-09.md`)
+
+- Gemini CLI odrzuca konta indywidualne („This client is no longer supported for Gemini Code Assist for individuals… migrate to Antigravity"). Następcą jest **Antigravity CLI** (`agy` 1.1.27, Go, closed-source, instalator `install.ps1`, binarka `%LOCALAPPDATA%\agy\bin\agy.exe`). Zalogowany kontem Google użytkownika; kwota wspólna z Antigravity IDE.
+- Headless: `agy -p "<prompt>" --output-format text --print-timeout 25m --dangerously-skip-permissions --add-dir <workdir> --model <slug>`; cwd = workspace; czyta `AGENTS.md`/`GEMINI.md` (adapter renderuje `AGENTS.md`). Modele: Gemini 3.8 Flash (domyślny w adapterze: `gemini-3.8-flash-high`), Gemini 3.1 Pro, Claude Sonnet/Opus 4.6, GPT-OSS 120B.
+- **Generuje PNG** (narzędzie `generate_image`, test żywy: star.png 256×256 RGBA) — wbrew researchowi z sieci; zapisuje domyślnie do `~/.gemini/antigravity-cli/scratch/`, dlatego adapter CLI dokłada na początku promptu bezwzględną ścieżkę workdir, a prompt `assets` żąda kopii i sprawdzenia rozmiaru.
+- Uwagi z researchu do zweryfikowania w praktyce: exit 0 nawet przy „soft-deny" narzędzia (bez `--dangerously-skip-permissions`) → adapter zawsze podaje flagę; sandbox `--sandbox` tylko Linux/macOS; ponowne `agy --help` po aktualizacjach (sonda i tak wykrywa flagi).
+- Decyzja: `gemini` w konfiguracji `enabled: false` (wymaga `GEMINI_API_KEY`); routing 19.12 uzupełniony: implement codex → **antigravity** → copilot; assets codex → **antigravity**; docs copilot → **antigravity**; review local → **antigravity**; second_opinion local → antigravity → copilot → codex.
+
 ### 19.14 Grafika rastrowa z CLI (research + test żywy 2026-09-05, `docs/research-image-generation-2026-09.md`)
 
 - **Codex CLI generuje PNG na loginie ChatGPT** (wbudowane narzędzie `image_gen`, gpt-image-2). Test żywy: `codex exec -s workspace-write -c approval_policy=never -C <dir> "…zapisz jako gear.png w bieżącym katalogu"` → poprawny PNG 256×256 z alfą w katalogu roboczym. Domyślnie obrazy lądują w `~/.codex/generated_images/`, więc prompt musi kazać skopiować do workdir — dodane do `prompt_cli.j2` dla roli `assets`. Koszt: 3–5× limitu tury tekstowej. Zgłaszane awarie narzędzia (issues) → watcher/reviewer sprawdza plik na dysku, nie wierzy raportowi (`done_without_changes` już to łapie).
@@ -797,7 +805,7 @@ Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
 | Typ pracy | Rola | Kolejność modeli (`by_role`) | Dlaczego |
 |---|---|---|---|
 | kod, refaktor | `implement`, `refactor` | codex → copilot → gemini → local | Codex (ChatGPT) najlepszy w kodzie z kontraktem; local tylko gdy nic innego |
-| grafika: ikony, logo, przyciski, ilustracje, diagramy | **`assets`** (nowa) | codex → gemini → copilot | SVG/CSS/HTML — każdy; **PNG/JPG — Codex** (wbudowany `image_gen` na loginie ChatGPT, potwierdzone testem, 19.14) |
+| grafika: ikony, logo, przyciski, ilustracje, diagramy | **`assets`** (nowa) | codex → antigravity → gemini → copilot | SVG/CSS/HTML — każdy; **PNG/JPG — Codex i Antigravity** (wbudowane narzędzia obrazów na loginach subskrypcyjnych, potwierdzone testami, 19.14–19.15) |
 | dokumentacja | `docs` | copilot → gemini → cheap → local | Copilot pisze dokumentację przy kodzie |
 | przegląd, druga opinia | `review`, `second_opinion` | **local** → copilot → codex → gemini | lokalna Ollama jako pierwsza: zero kosztu tokenów; chmura gdy local niedostępny |
 | drobne prace | `chores` | local → cheap → copilot | jak wyżej — oszczędność tokenów |

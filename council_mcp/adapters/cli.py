@@ -31,6 +31,7 @@ _FLAG_RE = re.compile(r"(?<![\w-])(--[a-z][a-z0-9-]*)")
 # One-shot ask: argv template, {prompt} substituted.
 _ASK_ARGV: dict[str, list[str]] = {
     "gemini": ["-p", "{prompt}"],
+    "antigravity": ["-p", "{prompt}", "--output-format", "text", "--print-timeout", "10m"],
     "codex": ["exec", "--skip-git-repo-check", "--ephemeral", "-s", "read-only", "{prompt}"],
     "copilot": ["-p", "{prompt}", "--silent"],
     "grok": ["-p", "{prompt}"],
@@ -41,6 +42,16 @@ _ASK_ARGV: dict[str, list[str]] = {
 # listed in order — the first one present in detected `flags` is used (empty = none needed).
 _RUN_ARGV: dict[str, list[str]] = {
     "gemini": ["-p", "{prompt}"],
+    "antigravity": [
+        "-p",
+        "{prompt}",
+        "--output-format",
+        "text",
+        "--print-timeout",
+        "25m",
+        "--add-dir",
+        "{workdir}",
+    ],
     "codex": [
         "exec",
         "--skip-git-repo-check",
@@ -56,6 +67,7 @@ _RUN_ARGV: dict[str, list[str]] = {
 }
 _APPROVAL: dict[str, list[list[str]]] = {
     "gemini": [["--approval-mode", "yolo"], ["--yolo"]],
+    "antigravity": [["--dangerously-skip-permissions"]],
     "codex": [["-c", "approval_policy=never"]],
     "copilot": [["--allow-all-tools", "--allow-all-paths"], ["--allow-all"]],
     "grok": [["--yolo"]],
@@ -69,7 +81,7 @@ _APPROVAL: dict[str, list[list[str]]] = {
     ],
 }
 # Adapters that read AGENTS.md/GEMINI.md themselves; others get the Charter inline in the prompt.
-_READS_CHARTER_FILE = {"codex", "gemini", "copilot"}
+_READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot"}
 
 
 async def _run(argv: list[str], timeout_s: float, cwd: Path | None = None) -> tuple[int, str, str]:
@@ -138,6 +150,8 @@ class CliAdapter:
         )
 
     def _model_args(self) -> list[str]:
+        if self.cfg.model and self.cfg.adapter == "antigravity":
+            return ["--model", self.cfg.model]
         if (
             self.cfg.model
             and "--model" in self.flags
@@ -172,7 +186,11 @@ class CliAdapter:
     async def run(self, task: Task, workdir: Path, budget: Budget, resume: bool) -> RunHandle:
         path = self._path()
         inline = None if self.cfg.adapter in _READS_CHARTER_FILE else render.charter(self.repo_root)
-        prompt = render.cli_prompt(task, resume, inline)
+        # Absolute workdir up front: agy/codex image tools default to their own scratch dirs.
+        prompt = (
+            f"Katalog roboczy (jedyne miejsce zapisu): {workdir.resolve()}\n\n"
+            + render.cli_prompt(task, resume, inline)
+        )
         argv = [path] + [
             a.replace("{prompt}", prompt).replace("{workdir}", str(workdir))
             for a in _RUN_ARGV[self.cfg.adapter]
