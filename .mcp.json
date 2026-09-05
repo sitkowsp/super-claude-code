@@ -2,7 +2,7 @@
   "mcpServers": {
     "council": {
       "type": "stdio",
-      "command": "uv",
+      "command": "${COUNCIL_UV:-uv}",
       "args": [
         "run",
         "--directory",

@@ -55,7 +55,11 @@ council doctor              # full table: installed / logged in / action, Obsidi
 Logins are the only manual step and each opens a browser: `codex login` (ChatGPT), `gh auth login`
 (Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama needs no login.
 
-Troubleshooting the install: the marketplace clones over HTTPS, so no SSH key is needed. If
+Troubleshooting: **the council MCP server did not connect (CONNECTION_CLOSED)** almost always means
+`uv` is not on the PATH of the process that launched Claude Code — after installing uv (or adding
+its folder to PATH) **restart Claude Code**, or set the environment variable `COUNCIL_UV` to the
+full path of `uv.exe`; then `/mcp` reconnects. `/council:doctor` shows the executor table once the
+server is up. The marketplace clones over HTTPS, so no SSH key is needed. If
 `claude plugin install` reports an invalid manifest or a stale version, run
 `claude plugin marketplace update super-claude-code` then `claude plugin update council@super-claude-code`
 and restart Claude Code. The first start builds a private virtualenv in the plugin cache (10–30 s).
@@ -121,6 +125,7 @@ defaults work with whatever executors `doctor` found. In Claude Code:
 | `council_analyze(write?)` | deterministic repo scan → proposed gates, privacy rule, routing notes |
 | `council_should_delegate(role, est_lines, est_files?, touches_seams?, privacy?)` | token policy: self / delegate / ask |
 | `council_budget` | session clock vs Claude's usage window, offload hint |
+| `council_doctor` | executors installed / logged in / action, Obsidian, routing gaps |
 
 ## Saving Claude tokens (the point of all this)
 

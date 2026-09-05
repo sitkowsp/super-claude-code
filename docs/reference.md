@@ -100,6 +100,7 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_analyze` | write? | deterministic repo scan, proposed gates |
 | `council_should_delegate` | role, est_lines, est_files?, touches_seams?, privacy? | delegate / self / ask |
 | `council_budget` | – | session minutes, offload hint |
+| `council_doctor` | – | environment check (same as `council doctor`) |
 
 ## CLI
 
@@ -114,7 +115,7 @@ council report [--root DIR] [--out F]  one-page Markdown report: tasks, reviews,
 
 `/council:ask`, `/council:plan`, `/council:run`, `/council:status`, `/council:answer`,
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
-`/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`. Subagents: `council-planner`, `council-reviewer`,
+`/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`. Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables

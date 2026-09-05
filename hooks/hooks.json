@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council events --root \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "${COUNCIL_UV:-uv} run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council events --root \"${CLAUDE_PROJECT_DIR}\"",
             "timeout": 15
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council session-start --root \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "${COUNCIL_UV:-uv} run --directory \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\" council session-start --root \"${CLAUDE_PROJECT_DIR}\"",
             "timeout": 60,
             "statusMessage": "council: checking executors"
           }

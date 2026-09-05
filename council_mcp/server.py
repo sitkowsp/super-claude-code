@@ -718,6 +718,35 @@ async def council_analyze(write: bool = True) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def council_doctor() -> dict[str, Any]:
+    """Environment check: every configured executor with installed / logged-in state and the exact
+    install or login command to run, Obsidian vault + Claudian detection, routing gaps. Same data as
+    `council doctor` in the terminal."""
+    from council_mcp import obsidian, setup
+
+    cfg = rt.cfg
+    rt.reset()
+    caps = await rt.caps()
+    checks = await setup.check_all(cfg)
+    gaps = []
+    for role in ("implement", "review", "docs", "chores"):
+        for privacy in ("public", "internal", "local-only"):
+            if role in cfg.routing.by_role and not cfg.candidates(role, privacy):  # type: ignore[arg-type]
+                gaps.append(f"no model for role={role} privacy={privacy}")
+    return {
+        "table": setup.render(checks),
+        "checks": [c.model_dump() for c in checks],
+        "probe": {
+            k: {"enabled": v.enabled, "version": v.version, "error": v.error}
+            for k, v in caps.models.items()
+        },
+        "obsidian": obsidian.status(cfg.obsidian, rt.root),
+        "routing_gaps": gaps,
+        "repo_root": str(rt.root),
+    }
+
+
+@mcp.tool()
 async def council_should_delegate(
     role: str,
     est_lines: int,
