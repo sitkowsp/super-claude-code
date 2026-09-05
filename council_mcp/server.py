@@ -731,7 +731,7 @@ async def council_doctor() -> dict[str, Any]:
     gaps = []
     for role in ("implement", "review", "docs", "chores"):
         for privacy in ("public", "internal", "local-only"):
-            if role in cfg.routing.by_role and not cfg.candidates(role, privacy):  # type: ignore[arg-type]
+            if role in cfg.routing.by_role and not cfg.candidates(role, privacy):
                 gaps.append(f"no model for role={role} privacy={privacy}")
     return {
         "table": setup.render(checks),
