@@ -46,7 +46,11 @@ Gates (same commands, run in a task worktree before review and after merge) are 
 
 Python 3.12, `uv`, type hints everywhere, pydantic v2 for anything read from disk, `ruff` (E,F,I,UP,B), asyncio only (no threads), `pathlib` for paths, `structlog` to **stderr** (stdout belongs to MCP). Adapter tests use recorded CLI output fixtures, never live CLIs. Commits: `feat|fix|docs(scope): …`. Any PR that changes a contract updates the design doc. Target repo `.gitignore` must include `.council/worktrees` and `.council/capabilities.json`.
 
-## Shell gotcha
+## Shell gotchas
+
+**npm .cmd shims + multi-line args**: cmd.exe truncates argv at the first newline. `cli.py` bypasses shims via `shim_target()` (runs `node <script>`); keep it that way for any new npm-based CLI.
+
+## Shell gotcha (Bash tool)
 
 The Bash tool mangles `\\n` inside heredoc-fed Python patch scripts (it became a real newline twice this project). Write patch scripts to the scratchpad with the Write tool, or use Edit directly.
 

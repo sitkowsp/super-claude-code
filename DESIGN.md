@@ -775,6 +775,7 @@ Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
 - **Ollama `qwen3:8b`** w pętli agentowej: kończy zadanie, ale potrafi zgłosić `done` bez zmiany plików. Decyzja: watcher dodaje `done_without_changes` do `reason` (diff pusty) — reviewer zaczyna od tej flagi. Mały model lokalny nadaje się do `review`/`data`, nie do `implement`.
 - **REPORT.md nie jest ścisłym YAML** w praktyce (`needs: [dlaczego?]` wywala parser). Decyzja: parser łagodny jako fallback (`store._lenient`), `report_invalid` tylko gdy brak front-matter lub nieznany `status`.
 - **Wznowienie po `blocked`**: poprzedni raport trafia do workdir jako `PREVIOUS_REPORT.md` (nie `REPORT.md` — watcher czytałby go jako nowy raport). `ANSWER.md` obok.
+- **Shimy npm `.cmd` na Windows** (codex, copilot, gemini) przechodzą przez `cmd.exe`, który **ucina argumenty na pierwszym znaku nowej linii** — wieloliniowy prompt zjadał wszystkie flagi po nim (Copilot: „Permission denied” na każdym zapisie, zadanie `failed: no_final_report`). Decyzja: adapter czyta shim, wyciąga ścieżkę skryptu i uruchamia `node <skrypt>` bezpośrednio (`shim_target`); `.exe` (agy) bez zmian. Wykryte na pierwszym realnym epiku (sitek-site).
 - **GitHub Copilot CLI** (`copilot -p --allow-all-tools --allow-all-paths`) dostępny i zalogowany przez `gh` — dodany jako adapter `copilot` (rola implement/docs/review). Gemini CLI nadal niezainstalowany.
 
 ### 19.15 Antigravity CLI (`agy`) zamiast Gemini CLI (2026-09-05, `docs/research-antigravity-cli-2026-09.md`)

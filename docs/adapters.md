@@ -16,6 +16,10 @@ Approval flags are not hardcoded blindly: `probe()` scans `--help` and the first
 flags all exist is used, so a CLI update that renames a flag disables the model instead of
 breaking it.
 
+On Windows the npm shims (`codex.cmd`, `copilot.cmd`, `gemini.cmd`) go through `cmd.exe`, which
+truncates the argument list at the first newline — a multi-line prompt would swallow every flag
+after it. The adapter resolves the shim to its `node <script>` target and runs that directly.
+
 Because both image-capable CLIs default to their own scratch folders, every run prompt starts
 with the absolute workdir and `assets` tasks are told to copy the file into scope and verify its
 size. The watcher's `done_without_changes` flag catches a model that only claims to have written.
