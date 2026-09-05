@@ -53,7 +53,7 @@ council doctor              # full table: installed / logged in / action, Obsidi
 ```
 
 Logins are the only manual step and each opens a browser: `codex login` (ChatGPT), `gh auth login`
-(Copilot), `agy` once (Google, Antigravity). Ollama needs no login.
+(Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama needs no login.
 
 **From a clone** (development, or without the plugin system):
 
@@ -72,6 +72,7 @@ uv run --directory /path/to/super-claude-code council doctor
   - Ollama (local or remote) with a tool-capable model (`qwen3:8b` works on a laptop)
   - `npm i -g @openai/codex` (ChatGPT subscription; `codex login`)
   - `npm i -g @github/copilot` (Copilot subscription; authenticates via `gh auth login`)
+  - `npm i -g @xai-official/grok` (xAI Grok Build; `grok login` with a grok.com / X account)
   - **Antigravity CLI** `agy` (Google account; the successor to Gemini CLI for individuals — install
     from https://antigravity.google, run `agy` once to log in). Gemini CLI itself now needs an API key.
   - `claude` itself as a cheap executor (`claude -p --model haiku`)
@@ -115,7 +116,7 @@ defaults work with whatever executors `doctor` found. In Claude Code:
 
 | Work | role | goes to |
 |---|---|---|
-| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local |
+| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok |
 | icons, logos, buttons, illustrations, diagrams (SVG/CSS/HTML; **PNG/JPG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
 | documentation | `docs` | Copilot → Antigravity → cheap Claude → local |
 | review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |

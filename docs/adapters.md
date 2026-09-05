@@ -9,6 +9,7 @@ It never reads REPORT.md (the watcher does) and never touches git (only council-
 | `antigravity` | `agy` (antigravity.google) | Google login | `agy -p <prompt> --dangerously-skip-permissions --output-format text --print-timeout 25m --add-dir <workdir> --model <slug>` | `AGENTS.md` | yes (`generate_image`, saves to `~/.gemini/antigravity-cli/scratch` unless told otherwise) |
 | `copilot` | `copilot` (npm `@github/copilot`) | `gh auth login` | `copilot -p <prompt> --silent -C <workdir> --add-dir <workdir> --allow-all-tools --allow-all-paths` | `AGENTS.md` | no |
 | `gemini` | `gemini` (npm `@google/gemini-cli`) | API key only (individual Google login removed 2026-06) | `gemini -p <prompt> --approval-mode yolo` | `GEMINI.md` | extension + paid key |
+| `grok` | `grok` (npm `@xai-official/grok`, xAI Grok Build) | `grok login` (grok.com / X account) | `grok -p <prompt> --cwd <workdir> --always-approve --output-format plain` | `AGENTS.md` | has image_gen tool but it returned 403 on this plan (credits/subscription); falls back to drawing with Pillow |
 | `claude-sub` | `claude` | Claude Code login | `claude -p <prompt> --permission-mode acceptEdits --allowedTools ... --model haiku` | inline in prompt | no |
 | `ollama` | HTTP `/api/chat` | none | own agent loop: `read_file`, `write_file`, `list_files`, `run` (whitelist), `write_report` | system prompt | no |
 

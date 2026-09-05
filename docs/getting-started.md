@@ -27,6 +27,7 @@ Requirements: Python 3.12, [`uv`](https://docs.astral.sh/uv/) and `git` on PATH.
 | Codex CLI (ChatGPT Plus/Pro) | `npm i -g @openai/codex` | `codex login` |
 | GitHub Copilot CLI | `npm i -g @github/copilot` | `gh auth login` |
 | Antigravity CLI (Google account) | installer from https://antigravity.google | run `agy` once |
+| xAI Grok Build CLI | `npm i -g @xai-official/grok` | `grok login` |
 | Ollama | https://ollama.com, `ollama pull qwen3:8b` | none |
 | Claude as cheap executor | already there | none |
 
