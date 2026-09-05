@@ -58,6 +58,10 @@ When working here, follow the same rule the plugin enforces: docs/assets/chores/
 
 `commands/`, `agents/`, `hooks/hooks.json` are auto-loaded by Claude Code — do **not** list them in `plugin.json` (duplicate-load error). Only `mcpServers` is referenced there. The marketplace source is an HTTPS git URL (SSH fails for users without GitHub keys). Any manifest fix needs a **new version string**, otherwise the installed cache is not refreshed (`claude plugin update` says "already latest"). Verify with `claude plugin list` (Status: enabled) and by running `uv run --directory <cache> council --help`. In the plugin `.mcp.json` use the **bare** `${CLAUDE_PLUGIN_ROOT}` — Claude Code substitutes that token literally; `${VAR:-default}` forms (nested or not) only worked in the desktop app because the variable was also in the process env, and in `claude -p` they resolved to `--directory .` → CONNECTION_CLOSED (rc6→rc7). Hooks go through a shell, so `${A:-${B}}` is fine there. Verify plugin changes with `claude mcp list` from a throwaway repo, not only in the desktop app.
 
+## Version bumps
+
+Bump all four places together: `.claude-plugin/plugin.json`, `council_mcp/__init__.py`, `pyproject.toml`, then `uv lock`. A stale `uv.lock` makes the gates' `uv run` rewrite it inside every task worktree; before rc10 that broke `council_merge` ("rebase failed ... conflicts in: ?"), since rc10 `merge()` discards such gate noise (DESIGN §19.11).
+
 ## Shell gotchas
 
 **npm .cmd shims + multi-line args**: cmd.exe truncates argv at the first newline. `cli.py` bypasses shims via `shim_target()` (runs `node <script>`); keep it that way for any new npm-based CLI.
