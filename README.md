@@ -81,11 +81,14 @@ Override any card with `assigned_to`. Routing is data (`.council/council.json`),
 
 Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`](https://docs.astral.sh/uv/), `git`, Node.js (for the npm CLIs).
 
-1. In Claude Code:
+1. In Claude Code (the desktop app has no `/plugin` dialog — use the terminal form there):
 
    ```
    /plugin marketplace add sitkowsp/super-claude-code
    /plugin install council@super-claude-code
+   ```
+   ```bash
+   claude plugin marketplace add sitkowsp/super-claude-code && claude plugin install council@super-claude-code
    ```
 
 2. **Restart the Claude Code desktop app (or your terminal session).** A running Claude Code keeps
