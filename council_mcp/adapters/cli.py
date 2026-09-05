@@ -84,6 +84,24 @@ _APPROVAL: dict[str, list[list[str]]] = {
 _READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot"}
 
 
+_SHIM_RE = re.compile(r'"%dp0%\\([^"]+\.[cm]?js)"')
+
+
+def shim_target(path: str) -> list[str]:
+    """For an npm `.cmd` shim return ["node", "<abs script>"]; otherwise [path]."""
+    if not path.lower().endswith(".cmd"):
+        return [path]
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return [path]
+    m = _SHIM_RE.search(text)
+    node = shutil.which("node")
+    if not m or not node:
+        return [path]
+    return [node, str(Path(path).parent / m.group(1))]
+
+
 async def _run(argv: list[str], timeout_s: float, cwd: Path | None = None) -> tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
         *argv,
@@ -120,6 +138,12 @@ class CliAdapter:
             raise FileNotFoundError(f"{self.cmd} not on PATH")
         return p
 
+    def _exe(self) -> list[str]:
+        """argv prefix. A .cmd npm shim goes through cmd.exe, which truncates arguments at the
+        first newline — every flag after a multi-line prompt would be lost. Bypass the shim and
+        run `node <script>` directly."""
+        return shim_target(self._path())
+
     async def probe(self) -> Capabilities:
         try:
             path = self._path()
@@ -128,12 +152,13 @@ class CliAdapter:
                 name=self.name, adapter=self.cfg.adapter, enabled=False, error=str(e)
             )
         try:
-            _, out, err = await _run([path, "--version"], 20)
+            exe = self._exe()
+            _, out, err = await _run([*exe, "--version"], 20)
             text = (out or err).strip()
             version = text.splitlines()[0] if text else None
-            _, out, err = await _run([path, "--help"], 20)
+            _, out, err = await _run([*exe, "--help"], 20)
             if self.cfg.adapter == "codex":
-                _, o2, e2 = await _run([path, "exec", "--help"], 20)
+                _, o2, e2 = await _run([*exe, "exec", "--help"], 20)
                 out += o2 + e2
             self.flags = sorted(set(_FLAG_RE.findall(out + err)))
         except Exception as e:  # noqa: BLE001
@@ -170,9 +195,9 @@ class CliAdapter:
         return []
 
     async def ask(self, prompt: str, files: list[Path] | None = None) -> AskResult:
-        path = self._path()
+        self._path()  # raises if missing
         content = inline_files(prompt, files)
-        argv = [path] + [a.replace("{prompt}", content) for a in _ASK_ARGV[self.cfg.adapter]]
+        argv = self._exe() + [a.replace("{prompt}", content) for a in _ASK_ARGV[self.cfg.adapter]]
         argv += self._model_args()
         t0 = time.monotonic()
         code, out, err = await _run(argv, self.timeout_s)
@@ -184,14 +209,14 @@ class CliAdapter:
         return AskResult(model=self.name, text=text, duration_s=round(time.monotonic() - t0, 2))
 
     async def run(self, task: Task, workdir: Path, budget: Budget, resume: bool) -> RunHandle:
-        path = self._path()
+        self._path()  # raises if missing
         inline = None if self.cfg.adapter in _READS_CHARTER_FILE else render.charter(self.repo_root)
         # Absolute workdir up front: agy/codex image tools default to their own scratch dirs.
         prompt = (
             f"Katalog roboczy (jedyne miejsce zapisu): {workdir.resolve()}\n\n"
             + render.cli_prompt(task, resume, inline)
         )
-        argv = [path] + [
+        argv = self._exe() + [
             a.replace("{prompt}", prompt).replace("{workdir}", str(workdir))
             for a in _RUN_ARGV[self.cfg.adapter]
         ]

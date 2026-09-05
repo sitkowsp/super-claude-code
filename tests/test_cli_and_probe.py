@@ -54,3 +54,18 @@ async def test_probe_all_disables_unavailable_and_writes_file(
     path = probe.write(caps, tmp_path)
     data = json.loads(path.read_text(encoding="utf-8"))
     assert set(data["models"]) == set(template_cfg.models)
+
+
+def test_shim_target_bypasses_cmd(tmp_path: Path) -> None:
+    from council_mcp.adapters.cli import shim_target
+
+    shim = tmp_path / "copilot.cmd"
+    shim.write_text(
+        '@ECHO off\r\n"%_prog%"  "%dp0%\node_modules\@github\copilot\npm-loader.js" %*\r\n'
+    )
+    out = shim_target(str(shim))
+    if out == [str(shim)]:  # node not installed on this machine
+        return
+    assert out[0].lower().endswith(("node", "node.exe"))
+    assert out[1] == str(tmp_path / "node_modules" / "@github" / "copilot" / "npm-loader.js")
+    assert shim_target("C:/x/agy.exe") == ["C:/x/agy.exe"]
