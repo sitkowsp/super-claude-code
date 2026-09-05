@@ -14,10 +14,7 @@ Repo link to drop in the first comment: https://github.com/sitkowsp/super-claude
 
 Claude Code now has a council. 🏛️
 
-One repo, several AI subscriptions you already pay for — now working together instead of sitting in
-separate windows. `council` is an open-source Claude Code plugin: Claude plans, delegates, reviews
-and merges, while ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a local Ollama execute
-in parallel, each in an isolated copy of the repo, on its own git branch.
+One repo, several AI subscriptions you already pay for — now working together instead of sitting in separate windows. council is an open-source Claude Code plugin: Claude plans, delegates, reviews and merges, while ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a local Ollama execute in parallel, each in an isolated copy of the repo, on its own git branch.
 
 💸 Saves your Claude tokens — docs, assets and chores go to an executor
 🌿 One git branch per task, reviewed and merged by Claude
@@ -40,8 +37,7 @@ MIT licensed, open source. Link to the repo is in the first comment. 👇
 
 Claude Code now has a council. 🏛️
 
-Claude plans, reviews and merges. ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a
-local Ollama do the work — in parallel, each in its own copy of your repo. 🧑‍💻⚡
+Claude plans, reviews and merges. ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a local Ollama do the work — in parallel, each in its own copy of your repo. 🧑‍💻⚡
 
 ✅ Saves your Claude tokens
 🌿 One git branch per task
