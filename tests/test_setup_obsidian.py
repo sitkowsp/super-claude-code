@@ -29,6 +29,20 @@ async def test_check_all_reports_missing_and_actions(
     assert any("@openai/codex" in c for c in cmds) and any("@github/copilot" in c for c in cmds)
 
 
+def test_apply_probe_marks_failed_probe() -> None:
+    ok = setup.Check(
+        model="codex", adapter="codex", installed=True, logged_in=True, enabled=True, action=""
+    )
+    local = setup.Check(
+        model="local", adapter="ollama", installed=True, logged_in=None, enabled=True, action=""
+    )
+    out = setup.apply_probe([ok, local], {"codex": None, "local": "model 'x' not pulled"})
+    assert out[0].action == "" and out[0].enabled
+    assert out[1].action.startswith("probe failed: model 'x' not pulled (ollama pull")
+    assert not out[1].enabled
+    assert "| local | ollama | yes | ? | probe failed" in setup.render(out)
+
+
 def test_detect_vaults_and_resolve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(obsidian.ENV_VAULT, raising=False)  # the developer's machine may set it
     vault = tmp_path / "Vault"

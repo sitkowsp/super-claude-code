@@ -829,7 +829,9 @@ async def council_doctor() -> dict[str, Any]:
     cfg = rt.cfg
     rt.reset()
     caps = await rt.caps()
-    checks = await setup.check_all(cfg)
+    checks = setup.apply_probe(
+        await setup.check_all(cfg), {k: v.error for k, v in caps.models.items()}
+    )
     gaps = []
     for role in ("implement", "review", "docs", "chores"):
         for privacy in ("public", "internal", "local-only"):

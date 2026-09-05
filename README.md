@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc7-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc8-orange.svg">
 </p>
 
 ```

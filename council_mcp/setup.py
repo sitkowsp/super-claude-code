@@ -180,6 +180,20 @@ async def check_all(cfg: CouncilConfig) -> list[Check]:
     return out
 
 
+def apply_probe(checks: list[Check], errors: dict[str, str | None]) -> list[Check]:
+    """Merge probe errors into the doctor table: an executor that is installed and logged in but
+    failed the availability probe (e.g. Ollama model not pulled) must not read as `ready`."""
+    for c in checks:
+        err = errors.get(c.model)
+        if err and c.enabled and not c.action:
+            hint = ""
+            if c.adapter == "ollama" and "not pulled" in err:
+                hint = " (ollama pull <model>)"
+            c.action = f"probe failed: {err}{hint}"
+            c.enabled = False
+    return checks
+
+
 def render(checks: list[Check]) -> str:
     rows = ["| model | adapter | installed | logged in | action |", "|---|---|---|---|---|"]
     for c in checks:
