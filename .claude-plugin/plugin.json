@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "1.0.0-rc5",
+  "version": "1.0.0-rc6",
   "description": "Delegate disjoint tasks to other providers' models (Ollama, Codex, Copilot, Gemini, claude -p) working in isolated copies of this repo; Claude plans, reviews and merges.",
   "author": {
     "name": "Pawel Sitkowski"

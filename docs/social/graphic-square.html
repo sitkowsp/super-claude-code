@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>council — Instagram graphic 1080×1080</title>
+<style>
+  :root{--bg:#0b0f1a;--bg2:#141b2d;--ink:#f4f6fb;--muted:#9aa6c2;--claude:#e07a45}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1080px;overflow:hidden;background:var(--bg);
+    font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;color:var(--ink)}
+  .card{position:relative;width:1080px;height:1080px;padding:72px 72px 64px;
+    background:
+      radial-gradient(800px 600px at 110% -10%,rgba(224,122,69,.38),transparent 60%),
+      radial-gradient(800px 600px at -10% 110%,rgba(79,140,255,.32),transparent 60%),
+      linear-gradient(160deg,var(--bg) 0%,var(--bg2) 100%)}
+  .grid{position:absolute;inset:0;background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:40px 40px;mask-image:radial-gradient(closest-side at 50% 50%,#000 40%,transparent 100%)}
+  .tag{display:inline-flex;align-items:center;gap:12px;font-size:22px;font-weight:600;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted)}
+  .tag .dot{width:14px;height:14px;border-radius:50%;background:var(--claude);box-shadow:0 0 20px var(--claude)}
+  h1{margin-top:30px;font-size:92px;line-height:1.0;font-weight:800;letter-spacing:-.025em}
+  h1 em{font-style:normal;background:linear-gradient(90deg,#ffb27a,#e07a45);-webkit-background-clip:text;color:transparent}
+  p.sub{margin-top:28px;font-size:31px;line-height:1.35;color:var(--muted);max-width:900px}
+  p.sub b{color:var(--ink);font-weight:600}
+  .models{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .m{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:18px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
+  .m .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;flex:none}
+  .m .ic svg{width:26px;height:26px}
+  .m .t{font-size:24px;font-weight:600}
+  .m .s{font-size:16px;color:var(--muted)}
+  .m.head{grid-column:1/-1;background:linear-gradient(90deg,rgba(224,122,69,.28),rgba(224,122,69,.08));border-color:rgba(224,122,69,.5)}
+  .perks{margin-top:34px;display:flex;gap:14px;flex-wrap:wrap}
+  .perk{display:inline-flex;align-items:center;gap:8px;font-size:20px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:9px 16px}
+  .perk svg{width:22px;height:22px}
+  .foot{position:absolute;left:72px;right:72px;bottom:56px;display:flex;justify-content:space-between;align-items:flex-end}
+  .cmd{font-family:Consolas,"Cascadia Mono",monospace;font-size:24px;color:#cfe7ff;background:rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 20px}
+  .cmd span{color:#7fb4ff}
+  .brand{text-align:right;color:var(--muted);font-size:19px;line-height:1.4}
+  .brand b{color:var(--ink);font-size:24px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="grid"></div>
+  <div class="tag"><span class="dot"></span> Claude Code plugin · open source</div>
+  <h1>Claude Code<br>now has a <em>council</em>.</h1>
+  <p class="sub">Claude plans, reviews and merges. <b>ChatGPT Codex</b>, <b>Google Antigravity</b>, <b>GitHub Copilot</b>, <b>Grok</b> and a <b>local Ollama</b> execute — in parallel, each in its own copy of your repo.</p>
+
+  <div class="models">
+    <div class="m head"><div class="ic" style="background:rgba(224,122,69,.25)"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb27a" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></div><div><div class="t">Claude Code — the chair</div><div class="s">plans · delegates · reviews · merges</div></div></div>
+    <div class="m"><div class="ic" style="background:rgba(25,195,125,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="#19c37d" stroke-width="2.2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></div><div><div class="t">ChatGPT Codex</div><div class="s">code · logos · PNG assets</div></div></div>
+    <div class="m"><div class="ic" style="background:rgba(79,140,255,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="#4f8cff" stroke-width="2.2"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5z"/></svg></div><div><div class="t">Google Antigravity</div><div class="s">code · images</div></div></div>
+    <div class="m"><div class="ic" style="background:rgba(176,133,255,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="#b085ff" stroke-width="2.2"><path d="M4 6h16v10H4zM8 20h8M12 16v4"/><path d="M8 10l2 2-2 2M12 14h4"/></svg></div><div><div class="t">GitHub Copilot</div><div class="s">docs · copy</div></div></div>
+    <div class="m"><div class="ic" style="background:rgba(242,201,76,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="#f2c94c" stroke-width="2.2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4M8 10h.01M12 10h.01M16 10h.01"/></svg></div><div><div class="t">Ollama · Grok</div><div class="s">local review · free tokens</div></div></div>
+  </div>
+
+  <div class="perks">
+    <span class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="#19c37d" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg>Saves Claude tokens</span>
+    <span class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="#4f8cff" stroke-width="2.2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-12 3-12 5"/></svg>Branch per task</span>
+    <span class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb27a" stroke-width="2.2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Secrets never leave</span>
+    <span class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="#b085ff" stroke-width="2.2"><path d="M4 4h10l6 6v10H4z"/><path d="M14 4v6h6M8 15h8M8 18h5"/></svg>Obsidian notes</span>
+  </div>
+
+  <div class="foot">
+    <div class="cmd"><span>/plugin</span> install council@super-claude-code</div>
+    <div class="brand"><b>super-claude-code</b><br>github.com/sitkowsp/super-claude-code</div>
+  </div>
+</div>
+</body>
+</html>

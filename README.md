@@ -1,90 +1,136 @@
-# super-claude-code · `council`
+<p align="center">
+  <img src="docs/social/council-facebook-1200x630.png" alt="Claude Code now has a council — Codex, Antigravity, Copilot, Grok and Ollama working for Claude" width="100%">
+</p>
 
-You have several AI subscriptions and one repo. `council` is a Claude Code plugin plus a small MCP
-server that lets Claude Code plan, delegate, review and merge while other providers' models (Codex,
-Antigravity/Gemini, GitHub Copilot, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
-isolated copy of your repo.
+<h1 align="center">Claude Code now has a council.</h1>
 
-**Status: Phase 3a — first real epic shipped.** A one-page business-card website was built by
-three executors (Codex: logos and PNGs, Copilot: copy from public registry data, Antigravity:
-the page), each reviewed and merged through the MCP tools; two adapter bugs found on the way are
-fixed and recorded in DESIGN.md §19.16.
+<p align="center">
+  <b>Claude plans, reviews and merges. ChatGPT Codex, Google Antigravity, GitHub Copilot, Grok and a local Ollama do the work</b><br>
+  — in parallel, each in an isolated copy of your repo, on its own branch.
+</p>
 
-**Pipeline status.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
-dispatch → watch REPORT.md → snapshot commits on `council/<id>` → `blocked` → answer → resume →
-`review`. Review (gates + diff + verdict), merge (rebase, `--no-ff`, after-merge gates, MEMORY.md)
-and the reviewer/integrator subagents exist and are unit-tested; the live review→merge run is next.
-See [DESIGN.md](DESIGN.md) — the single source of truth (§19.9 is the plan).
-
-## How it works
-
-```
-Claude Code ──/council:plan──▶ task cards (.council/tasks/T-001.json)
-            ──/council:run───▶ council-mcp: branch council/T-001
-                                           worktree .council/worktrees/T-001  (owned by council-mcp)
-                                           workdir  .council/work/T-001      (executor's copy: no .git, no secrets)
-                                           executor process (codex / copilot / gemini / ollama loop / claude -p)
-executor ──── REPORT.md ─────▶ watcher: parse → enforce scope → copy back → snapshot commit → events.jsonl
-Claude   ◀── /council:status ── board + new events;  blocked? ──/council:answer──▶ ANSWER.md, re-dispatch
-Claude   ── review branch, merge (Phase 2 automates this)
-```
-
-Executors never touch git and never see files matching `never_share`. Files outside a task's
-`scope` are never copied back (`scope_violation`). Everything an executor writes is data, not
-instructions.
-
-## Install (2 minutes)
-
-Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`](https://docs.astral.sh/uv/), `git`, Node.js (for the npm CLIs).
-
-**As a Claude Code plugin** — in Claude Code:
+<p align="center">
+  <a href="https://github.com/sitkowsp/super-claude-code/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sitkowsp/super-claude-code/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
+  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
+  <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc6-orange.svg">
+</p>
 
 ```
 /plugin marketplace add sitkowsp/super-claude-code
 /plugin install council@super-claude-code
 ```
 
-> **Restart the Claude Code desktop app (or your terminal session) after installing `uv`, Node.js,
-> any executor CLI, or the plugin itself.** A running Claude Code process keeps the environment it
-> was started with, so new PATH entries (uv, `agy`, npm CLIs) and variables like
-> `COUNCIL_OBSIDIAN_VAULT` are invisible to it until it restarts. The symptom of skipping this is
-> "council MCP server: CONNECTION_CLOSED" or commands that say `uv` is not found.
+---
 
-Open any project in Claude Code. On the first session the plugin initialises `.council/` for you
-and prints which executors are ready and which need one command. Then, still inside Claude Code:
+## Why
+
+You already pay for several AI subscriptions. Claude Code is the best of them at understanding a
+repo, but its 5-hour usage window is the scarce resource, and the others sit idle in separate
+windows. `council` fixes that:
+
+- 🏛️ **Claude is the chair.** It splits work into disjoint task cards, delegates, reviews every diff, runs your gates and merges.
+- ⚡ **Executors work in parallel** — Codex, Antigravity, Copilot, Grok, Ollama, or a cheap `claude -p` — each in its own copy of the repo, each on its own `council/<id>` branch.
+- 💸 **Your Claude tokens are protected.** A delegation policy sends docs, assets, chores and anything over ~40 lines to an executor. When the window is about to end, `/council:offload` hands the rest over.
+- 🎨 **Images too.** Codex (ChatGPT) and Antigravity (Google) generate real PNG logos and icons straight into your repo.
+- 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
+- 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
+- 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
+
+## What it looks like
 
 ```
-/council:setup --install    # installs missing npm CLIs (Codex, Copilot, Grok); lists logins needed
-/council:doctor             # full table: installed / logged in / action, Obsidian status
+/council:plan  Build a one-page business-card site: logo + icons (PNG), copy from public data, HTML/CSS
+   → T-001 assets  → codex         (logo.png, icons/*.png)
+   → T-002 docs    → copilot       (copy.md)
+   → T-003 implement → antigravity (index.html, styles.css)   depends_on: T-001, T-002
+/council:run          # three executors start in parallel, each in .council/work/<id>/
+/council:status       # board + new events; blocked? /council:answer T-002 "use the public registry"
+/council:review T-001 # gates + diff + flags → verdict; a rejection becomes ANSWER.md and re-dispatches
+/council:merge        # rebase + merge --no-ff in id order, after-merge gates, MEMORY.md line
 ```
 
-Logins are the only manual step and each opens a browser — run them in a terminal: `codex login`
-(ChatGPT), `gh auth login` (Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama
-needs no login. Restart Claude Code afterwards.
+That epic is real: it built a one-page business-card website with three executors and
+zero hand-written code (lessons in DESIGN.md §19.16).
 
-There is **no `council` command on your PATH** with a plugin install — the CLI lives inside the
-plugin's own virtualenv. Everything is reachable as `/council:<name>` slash commands and
-`council_*` MCP tools; if you ever need the terminal form, it is:
+```
+Claude Code ──/council:plan──▶ task cards (.council/tasks/T-001.json)
+            ──/council:run───▶ council-mcp: branch council/T-001
+                                           worktree .council/worktrees/T-001  (owned by council-mcp)
+                                           workdir  .council/work/T-001      (executor's copy: no .git, no secrets)
+                                           executor process (codex / agy / copilot / grok / ollama loop / claude -p)
+executor ──── REPORT.md ─────▶ watcher: parse → enforce scope → copy back → snapshot commit → events.jsonl
+Claude   ◀── /council:status ── board + new events;  blocked? ──/council:answer──▶ ANSWER.md, re-dispatch
+Claude   ── /council:review ── gates + diff → verdict ── /council:merge ── rebase, --no-ff, gates
+```
+
+## Who does what
+
+| Work | role | goes to |
+|---|---|---|
+| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok |
+| logos, icons, illustrations, diagrams (**PNG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
+| documentation, copy | `docs` | Copilot → Antigravity → cheap Claude → local |
+| review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
+| company data | `data` | local only, never leaves your machine |
+
+Override any card with `assigned_to`. Routing is data (`.council/council.json`), not prompts.
+
+## Install (2 minutes)
+
+Prerequisites: [Claude Code](https://claude.com/claude-code), Python 3.12, [`uv`](https://docs.astral.sh/uv/), `git`, Node.js (for the npm CLIs).
+
+1. In Claude Code:
+
+   ```
+   /plugin marketplace add sitkowsp/super-claude-code
+   /plugin install council@super-claude-code
+   ```
+
+2. **Restart the Claude Code desktop app (or your terminal session).** A running Claude Code keeps
+   the environment it started with, so new PATH entries (uv, `agy`, npm CLIs) and variables like
+   `COUNCIL_OBSIDIAN_VAULT` are invisible until it restarts. Skipping this shows up as
+   `council MCP server: CONNECTION_CLOSED`.
+
+3. Open any project. The first session initialises `.council/` and prints which executors are ready.
+   Then, still inside Claude Code:
+
+   ```
+   /council:setup --install    # installs missing npm CLIs (Codex, Copilot, Grok); lists logins needed
+   /council:doctor             # installed / logged in / action, Obsidian status, routing gaps
+   ```
+
+4. Log in to the executors you own (each opens a browser, in a terminal): `codex login` (ChatGPT),
+   `gh auth login` (Copilot), `agy` once (Google, Antigravity), `grok login` (xAI). Ollama needs no
+   login. Restart Claude Code afterwards.
+
+There is **no `council` command on your PATH** with a plugin install — everything is a
+`/council:<name>` slash command or a `council_*` MCP tool. The terminal form, if you ever need it:
 
 ```bash
 uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> council doctor
 ```
 
-Troubleshooting: **every council tool fails with an error** — call `council_ping` (or `/council:doctor`,
-which falls back to it): it shows the repo root the server resolved and the environment it got;
-since rc5 tool errors carry the real exception message. **A tool such as `council_doctor` is "missing"** means Claude connected to a stale
-project-level `.mcp.json` written by an older `council init` (it pins one cached plugin version).
-With the plugin installed, delete the `council` entry from the project's `.mcp.json` — since rc4
-`init` no longer writes it when running from the plugin. **The council MCP server did not connect (CONNECTION_CLOSED)** almost always means
-`uv` is not on the PATH of the process that launched Claude Code — after installing uv (or adding
-its folder to PATH) **restart Claude Code**, or set the environment variable `COUNCIL_UV` to the
-full path of `uv.exe`; then `/mcp` reconnects. `/council:doctor` shows the executor table once the
-server is up. The marketplace clones over HTTPS, so no SSH key is needed. If
-`claude plugin install` reports an invalid manifest or a stale version, run
-`claude plugin marketplace update super-claude-code` then `claude plugin update council@super-claude-code`
-and restart Claude Code. The first start builds a private virtualenv in the plugin cache (10–30 s).
+<details>
+<summary><b>Troubleshooting</b></summary>
 
-**From a clone** (development, or without the plugin system):
+- **Every council tool fails** — call `council_ping` (`/council:doctor` falls back to it): it shows the
+  repo root the server resolved and the environment it got; tool errors carry the real exception.
+- **`council_doctor` is "missing"** — Claude connected to a stale project-level `.mcp.json` written by
+  an older `council init` (it pins one cached plugin version). With the plugin installed, delete the
+  `council` entry from the project's `.mcp.json`; since rc4 `init` no longer writes it from the plugin.
+- **CONNECTION_CLOSED** — almost always `uv` is not on the PATH of the process that launched Claude
+  Code: restart Claude Code after installing uv, or set `COUNCIL_UV` to the full path of `uv.exe`,
+  then `/mcp` to reconnect. If you opened a **clone of this repo** with an older `.mcp.json`
+  (before rc6), pull: Claude Code does not expand the nested default the old file used.
+- **Invalid manifest / stale version** — `claude plugin marketplace update super-claude-code`, then
+  `claude plugin update council@super-claude-code`, restart. The first start builds a private
+  virtualenv in the plugin cache (10–30 s). The marketplace clones over HTTPS; no SSH key needed.
+</details>
+
+<details>
+<summary><b>From a clone</b> (development, or without the plugin system)</summary>
 
 ```bash
 git clone https://github.com/sitkowsp/super-claude-code && cd super-claude-code && uv sync
@@ -93,160 +139,90 @@ uv run --directory /path/to/super-claude-code council init      # writes .counci
 uv run --directory /path/to/super-claude-code council doctor
 ```
 
-In a clone the `council` CLI is available as `uv run council …` (init, setup, doctor, events,
-obsidian, report, session-start); the `.mcp.json` written by `init` points Claude Code at the clone.
+In a clone the CLI is `uv run council …` (init, setup, doctor, events, obsidian, report,
+session-start); the `.mcp.json` written by `init` points Claude Code at the clone.
+</details>
 
-## Requirements
+### Executors
 
-- Python 3.12 and [`uv`](https://docs.astral.sh/uv/) on PATH; git
-- Claude Code
-- At least one executor:
-  - Ollama (local or remote) with a tool-capable model (`qwen3:8b` works on a laptop)
-  - `npm i -g @openai/codex` (ChatGPT subscription; `codex login`)
-  - `npm i -g @github/copilot` (Copilot subscription; authenticates via `gh auth login`)
-  - `npm i -g @xai-official/grok` (xAI Grok Build; `grok login` with a grok.com / X account)
-  - **Antigravity CLI** `agy` (Google account; the successor to Gemini CLI for individuals — install
-    from https://antigravity.google, run `agy` once to log in). Gemini CLI itself now needs an API key.
-  - `claude` itself as a cheap executor (`claude -p --model haiku`)
+- **Ollama** (local or remote) with a tool-capable model — `qwen3:8b` works on a laptop
+- **ChatGPT Codex** — `npm i -g @openai/codex`, `codex login` (generates PNGs)
+- **GitHub Copilot** — `npm i -g @github/copilot`, `gh auth login`
+- **Grok Build** — `npm i -g @xai-official/grok`, `grok login`
+- **Google Antigravity** `agy` — from https://antigravity.google, run `agy` once (generates PNGs; the
+  successor to Gemini CLI for individual accounts — Gemini CLI itself now needs an API key)
+- **Claude** as a cheap executor and fallback — `claude -p --model haiku`
 
 ## Quick start
-
-Edit `.council/council.json` only if you want to (models, routing, `never_share`, gates); the
-defaults work with whatever executors `doctor` found. In Claude Code:
 
 ```
 /council:ask codex "review council_mcp/config.py for pydantic mistakes" --files council_mcp/config.py
 /council:plan add a --json flag to the CLI and document it
 /council:run
 /council:status
+/council:review T-001
+/council:merge
 ```
 
-## MCP tools
+Full walkthrough: [docs/getting-started.md](docs/getting-started.md). Recipes (bug-hunt with
+`/council:compare`, assets epics, end-of-session offload): [docs/recipes.md](docs/recipes.md).
 
-| Tool | Purpose |
-|---|---|
-| `council_models` | configured models, availability (probed at start), roles, privacy |
-| `council_ask(model, prompt, files?)` | one-shot question; files inlined, `never_share` refused |
-| `council_probe` | re-run the availability probe |
-| `council_plan(tasks)` | validate cards (disjoint scope, routing, never_share) and save them |
-| `council_dispatch(ids?)` | start queued tasks: branch + worktree + workdir + executor |
-| `council_status(task?, report?)` | board, new events, per-task detail, diff stat, full report |
-| `council_answer(task, text, remember?)` | answer a `blocked` task and resume it |
-| `council_cancel(task)` | kill the executor, mark failed, keep worktree |
-| `council_review(task)` | review package: card, report, flags, diff, `before_review` gate results |
-| `council_verdict(task, ok, reason)` | `review_ok`, or reject → reason becomes ANSWER.md, attempt+1, re-dispatch |
-| `council_merge(ids?, force?)` | rebase + `merge --no-ff` in id order, `after_merge` gates, MEMORY.md line, cleanup |
-| `council_handoff(text)` | write `.council/HANDOFF.md` for the next session (mirrored to Obsidian) |
-| `council_obsidian(mirror?)` | vault status / mirror (see Obsidian section) |
-| `council_obsidian(mirror?)` | Obsidian vault detection, Claudian presence, mirror council notes |
-| `council_defect(task, description, lesson?)` | record a post-merge defect: demotes the model's trust, adds a lesson |
-| `council_stats` | per-model stats and trust (`probation` → `standard` → `trusted`), LESSONS.md tail |
-| `council_why(task)` | the task's history with every automatic decision and its reason |
-| `council_compare(prompt, models?, files?)` | same question to several models in parallel (bug-hunt, research) |
-| `council_playbooks(goal?, playbook?)` | list playbooks and pick the pattern for a goal (deterministic) |
-| `council_context` | planning context from the Obsidian vault (Plan, Decisions, #council/spec notes) |
-| `council_analyze(write?)` | deterministic repo scan → proposed gates, privacy rule, routing notes |
-| `council_should_delegate(role, est_lines, est_files?, touches_seams?, privacy?)` | token policy: self / delegate / ask |
-| `council_budget` | session clock vs Claude's usage window, offload hint |
-| `council_doctor` | executors installed / logged in / action, Obsidian, routing gaps |
-| `council_ping` | no-config diagnostics: version, resolved repo root, env vars, uv on PATH — call first when tools fail |
-| `council_setup(install?)` | executor table, npm installs on request, logins needed |
+## Saving Claude tokens — the point of all this
 
-## Saving Claude tokens (the point of all this)
-
-Claude's usage window is the scarce resource; executors are paid for anyway. The plugin enforces a
-**delegation policy** (`delegation` in `council.json`, default `mode: auto`):
+The plugin enforces a **delegation policy** (`delegation` in `council.json`, default `mode: auto`):
 
 - docs, assets, chores, review and data work always go to an executor;
 - any change of roughly 40+ lines or 2+ files goes to an executor; Claude keeps contracts,
   integration, merge and small hotfixes;
-- borderline cases: Claude asks you once (`mode: ask` makes it always ask, `off` disables);
-- `council_should_delegate` gives the deterministic answer, and the SessionStart hook reminds
-  Claude of the policy every session;
-- after ~3.5 h of a session the hooks warn that the 5-hour window may end and `/council:offload`
-  turns the remaining work into executor tasks plus a handoff note, so the next session only
-  reviews and merges.
+- borderline cases: Claude asks you once (`mode: ask` always asks, `off` disables);
+- `council_should_delegate` gives the deterministic answer; the SessionStart hook reminds Claude of
+  the policy every session;
+- after ~3.5 h the hooks warn that the 5-hour window may end and `/council:offload` turns the
+  remaining work into executor tasks plus a handoff note, so the next session only reviews and merges.
 
 If an executor runs out of quota, stops responding or is unavailable, the task is re-queued on the
-**fallback model** (`cheap` = `claude -p`, configurable) and the failing model gets a cooldown; the
-same fallback applies to `council_ask`.
-
-## Who does what (default routing)
-
-| Work | role | goes to |
-|---|---|---|
-| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok |
-| icons, logos, buttons, illustrations, diagrams (SVG/CSS/HTML; **PNG/JPG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
-| documentation | `docs` | Copilot → Antigravity → cheap Claude → local |
-| review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
-| company data | `data` | local only |
-
-Raster images: Codex CLI (ChatGPT login) and Antigravity CLI (Google login) both have built-in image
-tools — verified live, see `docs/research-*.md`. Both save to their own scratch folder by default, so
-the task prompt names the workdir explicitly. Copilot CLI has none. Override any card with `assigned_to`.
-
-## Obsidian (optional)
-
-If Obsidian is installed, council finds your vault, prefers one that already contains the repo, and
-mirrors MEMORY/HANDOFF/LESSONS/TASKS, task cards (with frontmatter for Dataview) and reports into
-`<vault>/Council/<project>/`. With the **Claudian** plugin you can talk to Claude about the project
-from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obsidian.md).
-
-**The vault talks back (Phase B)**
-
-- Write `Council/<project>/Plan.md`, `DECISIONS.md` or notes tagged `#council/spec`; `/council:plan`
-  reads them (`council_context`) and cites them in cards. Bullets in `DECISIONS.md` are merged into the
-  repo's `MEMORY.md` at the next plan.
-- A `blocked` task creates `Council/<project>/inbox/T-007.md`; fill its `answer:` field in Obsidian
-  and the next `council_status` resumes the task. `council_obsidian(kit=true)` (or
-  `council init --obsidian` from a clone) installs Claudian slash
-  commands (`/council-status`, `/council-answer`, `/council-decide`, `/council-handoff`) in the vault.
-
-**Where to find your projects in Obsidian**
-
-- Recommended: one dedicated vault for all council projects — create an empty folder, open it
-  once in Obsidian, set the user environment variable `COUNCIL_OBSIDIAN_VAULT` to its path (see
-  `docs/obsidian.md` for a Dashboard note with Dataview tables across projects).
-- Open the vault that `/council:doctor` reports (`Obsidian: vault …`). In the file explorer look for
-  the folder **`Council/`** at the vault root (rename it with `obsidian.folder` in `council.json`).
-- One sub-folder per project: `Council/<project>/` with `README.md` (Dataview board of all tasks),
-  `MEMORY.md` (decisions), `HANDOFF.md` (where the last session stopped), `LESSONS.md`,
-  `TASKS.md`, `tasks/T-001.md …` (one note per task; frontmatter `state`, `model`, `role`) and
-  `reports/T-001/…` (every executor report).
-- If the repo itself lives inside the vault, there is only `Council/<project>.md` — an index note
-  linking to the repo's own `.council/*.md`, which Obsidian already indexes.
-- Search: tag `#council` on every mirrored note; `#council/merged`, `#council/blocked` etc. by
-  task state. Dataview: `TABLE state, model FROM "Council/<project>/tasks"`.
-- Refresh on demand with `/council:status` → `council_obsidian(mirror=true)` or
-  (from a clone: `uv run council obsidian --mirror`); it also runs after every plan, merge and handoff.
+**fallback model** (`cheap` = `claude -p`, configurable) and the failing model gets a cooldown.
 
 ## Trust, lessons, playbooks
 
-Every model starts on **probation**: small cards, a second opinion is required, merge only after
-review. Three first-pass approvals promote it; two consecutive rejections demote it; a defect found
-after merge (`/council:defect`) always demotes. State lives in `.council/stats.json`.
-
-Every rejection carries a one-line **lesson** (`.council/LESSONS.md`); the last ten lessons for that
-model and role are injected into its next TASK.md. Executors can raise `dissent: true` in a report
-when they object to the contract itself — that goes to you, not to another model.
+Every model starts on **probation**: small cards, second opinion required, merge only after review.
+Three first-pass approvals promote it; two consecutive rejections demote it; a defect found after
+merge (`/council:defect`) always demotes. Every rejection carries a one-line **lesson**; the last ten
+lessons for that model and role are injected into its next TASK.md. Executors may raise
+`dissent: true` when they object to the contract itself — that goes to you, not to another model.
 
 **Playbooks** (`playbooks/*.json`, override in `.council/playbooks/`) tell the planner how to split
 work: `feature` (default), `bug-hunt` (split hypotheses, `/council:compare`, Claude fixes),
-`data-internal` (everything local-only). Selection is keyword-based and explained.
+`data-internal` (everything local-only).
+
+## Obsidian (optional)
+
+`council` finds your vault (or the one in `COUNCIL_OBSIDIAN_VAULT`) and mirrors MEMORY, HANDOFF,
+LESSONS, task cards (Dataview frontmatter) and reports into `<vault>/Council/<project>/`.
+
+- Write `Plan.md`, `DECISIONS.md` or notes tagged `#council/spec` — `/council:plan` reads and cites them.
+- A `blocked` task creates `inbox/T-007.md`; fill its `answer:` in Obsidian and the next
+  `council_status` resumes the task.
+- `council_obsidian(kit=true)` installs Claudian slash commands (`/council-status`, `/council-answer`,
+  `/council-decide`, `/council-handoff`) in the vault.
+
+Where to find things, Dashboard with Dataview, Phase B details: [docs/obsidian.md](docs/obsidian.md).
+
+## MCP tools
+
+25 tools, all `council_*`: `models · ask · probe · plan · dispatch · status · answer · cancel ·
+review · verdict · merge · handoff · obsidian · defect · stats · why · compare · playbooks · context ·
+analyze · should_delegate · budget · doctor · ping · setup`. Reference with arguments and return
+shapes: [docs/reference.md](docs/reference.md). Adapters and what each CLI can do (verified live):
+[docs/adapters.md](docs/adapters.md). Security model: [docs/security.md](docs/security.md).
 
 ## Configuration
 
 `.council/council.json` — schema in `council_mcp/config.py`, example in `templates/council.json`.
-No secrets in the file; use `${ENV_VAR}`. Routing: a task goes to the first model in
-`by_role[role]` that is also in `by_privacy[privacy]` and passed the probe. `local-only` tasks never
-leave your Ollama.
-
-Gates (`gates.before_review`, `gates.after_merge` in council.json) are shell commands run in the
-task worktree before review and on the base branch after merge; results land in
-`.council/reports/<id>/gates-*.json`.
-
-Budget per task: 20 min soft / 25 min hard, 30 agent turns (Ollama). A task that ends without a
-final `done|blocked|failed` report is `failed: no_final_report`.
+No secrets in the file; use `${ENV_VAR}`. A task goes to the first model in `by_role[role]` that is
+also in `by_privacy[privacy]` and passed the probe. `local-only` tasks never leave your Ollama.
+Gates (`gates.before_review`, `gates.after_merge`) run in the task worktree before review and on the
+base branch after merge. Budget per task: 20 min soft / 25 min hard, 30 agent turns.
 
 ## Development
 
@@ -257,9 +233,9 @@ uv run ruff format . && uv run ruff check .
 uv run mypy
 ```
 
-CI runs the same gates on Ubuntu and Windows plus `scripts/privacy_check.py` (no user paths,
-private IPs, e-mails or tokens in tracked files). See
-[CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+CI runs the same gates on Ubuntu and Windows plus `scripts/privacy_check.py`. Design document (single
+source of truth, Polish): [DESIGN.md](DESIGN.md). See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[SECURITY.md](SECURITY.md). Social graphics and post copy: [docs/social/](docs/social/posts.md).
 
 ## License
 

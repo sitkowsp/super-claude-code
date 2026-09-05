@@ -30,3 +30,4 @@ build/
 .vscode/
 .DS_Store
 Thumbs.db
+.council/.session_started
