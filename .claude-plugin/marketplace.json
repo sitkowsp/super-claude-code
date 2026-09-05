@@ -8,8 +8,8 @@
     {
       "name": "council",
       "source": {
-        "source": "github",
-        "repo": "sitkowsp/super-claude-code"
+        "source": "url",
+        "url": "https://github.com/sitkowsp/super-claude-code.git"
       },
       "description": "Delegate disjoint tasks to Codex, Copilot, Antigravity, Ollama; Claude plans, reviews, merges."
     }
