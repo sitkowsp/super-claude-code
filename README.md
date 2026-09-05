@@ -132,6 +132,21 @@ mirrors MEMORY/HANDOFF/LESSONS/TASKS, task cards (with frontmatter for Dataview)
 `<vault>/Council/<project>/`. With the **Claudian** plugin you can talk to Claude about the project
 from inside the vault. Details and the Phase B plan: [docs/obsidian.md](docs/obsidian.md).
 
+**Where to find your projects in Obsidian**
+
+- Open the vault that `council doctor` reports (`Obsidian: vault …`). In the file explorer look for
+  the folder **`Council/`** at the vault root (rename it with `obsidian.folder` in `council.json`).
+- One sub-folder per project: `Council/<project>/` with `README.md` (Dataview board of all tasks),
+  `MEMORY.md` (decisions), `HANDOFF.md` (where the last session stopped), `LESSONS.md`,
+  `TASKS.md`, `tasks/T-001.md …` (one note per task; frontmatter `state`, `model`, `role`) and
+  `reports/T-001/…` (every executor report).
+- If the repo itself lives inside the vault, there is only `Council/<project>.md` — an index note
+  linking to the repo's own `.council/*.md`, which Obsidian already indexes.
+- Search: tag `#council` on every mirrored note; `#council/merged`, `#council/blocked` etc. by
+  task state. Dataview: `TABLE state, model FROM "Council/<project>/tasks"`.
+- Refresh on demand with `/council:status` → `council_obsidian(mirror=true)` or
+  `council obsidian --mirror`; it also runs after every plan, merge and handoff.
+
 ## Trust, lessons, playbooks
 
 Every model starts on **probation**: small cards, a second opinion is required, merge only after
