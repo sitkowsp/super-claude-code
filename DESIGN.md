@@ -778,6 +778,17 @@ Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
 - **Shimy npm `.cmd` na Windows** (codex, copilot, gemini) przechodzą przez `cmd.exe`, który **ucina argumenty na pierwszym znaku nowej linii** — wieloliniowy prompt zjadał wszystkie flagi po nim (Copilot: „Permission denied” na każdym zapisie, zadanie `failed: no_final_report`). Decyzja: adapter czyta shim, wyciąga ścieżkę skryptu i uruchamia `node <skrypt>` bezpośrednio (`shim_target`); `.exe` (agy) bez zmian. Wykryte na pierwszym realnym epiku (sitek-site).
 - **GitHub Copilot CLI** (`copilot -p --allow-all-tools --allow-all-paths`) dostępny i zalogowany przez `gh` — dodany jako adapter `copilot` (rola implement/docs/review). Gemini CLI nadal niezainstalowany.
 
+### 19.16 Pierwszy realny epik: `sitek-site` (2026-09-05) — co się okazało
+
+Trzy karty: `assets` → codex (logo.svg + logo/favicon/hero PNG przez `image_gen`), `docs` → copilot (opis firmy z danych rejestrowych), `implement` → antigravity (index.html, `depends_on` obu). Przebieg przez prawdziwe narzędzia MCP (`council_plan/dispatch/status/review/verdict/merge`).
+
+- Codex: komplet 4 grafik za pierwszym podejściem, raporty plan → 45% → 80% → done, migawki na branchu, `verify` z rozmiarami; **review_ok, merge 85210c8**.
+- Copilot, próba 1: `failed: no_final_report` — każdy zapis „Permission denied”. Przyczyna: shim `.cmd` (19.11). Po poprawce próba 2 (ponowne `queued`, ten sam `attempt`): kompletny `content/company.md` PL+EN, zero wymyślonych danych; **review_ok, merge 52be62d**.
+- `council_merge` zatrzymał się na T-002 w tym samym wywołaniu: wpis do `MEMORY.md` po merge T-001 zabrudził `main`. Decyzja: po każdym merge council-mcp **commituje własny stan** (`MEMORY.md`, `tasks/`, `reports/`, `events.jsonl`, `stats.json`, `TASKS.md`) jako `council: state after <id>`, a test czystości drzewa **ignoruje `.council/`** (zmienia się cały czas i należy do systemu, nie użytkownika).
+- Operacyjnie: dwa procesy council-mcp na jednym repo (dwie sesje Claude/driver) = dwa watchery i dwa locki git → **nie wolno**; jeden serwer per repo. Do fazy 4: plik-lock `.council/.server.lock` z PID.
+- `depends_on` wymaga stanu `merged` zależności — T-003 czekał poprawnie w kolejce aż T-001 i T-002 zostały scalone.
+- Dane firmowe (`registry-data.md`) zebrane z CEIDG/REGON/Biała Lista przez subagenta z regułą „tylko dane rejestrowe, bez zgadywania”; brak publicznego e-maila/telefonu → placeholdery, nie wymysły.
+
 ### 19.15 Antigravity CLI (`agy`) zamiast Gemini CLI (2026-09-05, `docs/research-antigravity-cli-2026-09.md`)
 
 - Gemini CLI odrzuca konta indywidualne („This client is no longer supported for Gemini Code Assist for individuals… migrate to Antigravity"). Następcą jest **Antigravity CLI** (`agy` 1.1.27, Go, closed-source, instalator `install.ps1`, binarka `%LOCALAPPDATA%\agy\bin\agy.exe`). Zalogowany kontem Google użytkownika; kwota wspólna z Antigravity IDE.

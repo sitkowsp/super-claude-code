@@ -5,7 +5,12 @@ server that lets Claude Code plan, delegate, review and merge while other provid
 Antigravity/Gemini, GitHub Copilot, Ollama, a cheap Claude) execute disjoint tasks in parallel, each in an
 isolated copy of your repo.
 
-**Status: Phase 2b.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
+**Status: Phase 3a — first real epic shipped.** A one-page business-card website was built by
+three executors (Codex: logos and PNGs, Copilot: copy from public registry data, Antigravity:
+the page), each reviewed and merged through the MCP tools; two adapter bugs found on the way are
+fixed and recorded in DESIGN.md §19.16.
+
+**Pipeline status.** Verified end-to-end with Codex and a local Ollama model: plan task cards →
 dispatch → watch REPORT.md → snapshot commits on `council/<id>` → `blocked` → answer → resume →
 `review`. Review (gates + diff + verdict), merge (rebase, `--no-ff`, after-merge gates, MEMORY.md)
 and the reviewer/integrator subagents exist and are unit-tested; the live review→merge run is next.
