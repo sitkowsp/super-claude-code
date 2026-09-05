@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Role = Literal["implement", "refactor", "docs", "review", "chores", "data", "contract", "adversary"]
 Privacy = Literal["public", "internal", "local-only"]
-AdapterName = Literal["ollama", "gemini", "codex", "grok", "claude-sub"]
+AdapterName = Literal["ollama", "gemini", "codex", "copilot", "grok", "claude-sub"]
 
 _ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 

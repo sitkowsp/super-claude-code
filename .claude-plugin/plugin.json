@@ -1,0 +1,9 @@
+{
+  "name": "council",
+  "version": "0.1.0",
+  "description": "Delegate disjoint tasks to other providers' models (Ollama, Codex, Copilot, Gemini, claude -p) working in isolated copies of this repo; Claude plans, reviews and merges.",
+  "author": {"name": "Pawel Sitkowski"},
+  "license": "MIT",
+  "commands": "./commands",
+  "mcpServers": "./.mcp.json"
+}

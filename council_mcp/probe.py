@@ -24,9 +24,11 @@ class CapabilitiesFile(BaseModel):
 
 async def probe_all(cfg: CouncilConfig) -> CapabilitiesFile:
     names = list(cfg.models)
-    results = await asyncio.gather(
-        *(make(n, cfg.models[n]).probe() for n in names), return_exceptions=True
-    )
+
+    async def _one(n: str) -> Capabilities:
+        return await make(n, cfg.models[n]).probe()  # ValueError on bad config → handled below
+
+    results = await asyncio.gather(*(_one(n) for n in names), return_exceptions=True)
     out: dict[str, Capabilities] = {}
     for name, res in zip(names, results, strict=True):
         if isinstance(res, BaseException):

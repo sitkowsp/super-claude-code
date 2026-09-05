@@ -1,6 +1,6 @@
 # Super Claude Code — plugin `council` · projekt wykonawczy v1.0
 
-2026-09-05 (rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
+2026-09-05 (rev. 3.3: faza 0.5 i faza 1 wykonane, adapter `copilot`, ustalenia z testu żywego (19.11); rev. 3.2: sekcja 19 — decyzje po przeglądzie Opus/Sonnet, krok 0 i faza 0 wykonane; rev. 3.1: projekt publiczny (open source) + krok 0 w Claude Code; rev. 3.0: przegląd z sześciu perspektyw + 14 ulepszeń (sekcja 16); rev. 2.1: playbooki (15); rev. 2.0: przegląd krytyczny, warstwa spec→kontrakty→DAG, gates, kwoty, baza wiedzy, `/council:analyze`, `council.json` v2) · wszystkie decyzje zamknięte · repo: `super-claude-code`
 Ten dokument jest jedynym źródłem prawdy. W Claude Code leży jako `DESIGN.md`. Jeśli implementacja odbiega od dokumentu — poprawia się dokument w tym samym commicie.
 
 ---
@@ -761,13 +761,21 @@ Przed `uv init`, przed pierwszą linią kodu:
 | Faza | Zakres | Sesje | Stan |
 |---|---|---|---|
 | **0** | `config.py`, adaptery `ollama` (`ask`) i generyczny `cli` (`probe`/`ask` dla gemini/codex/grok/claude-sub), `probe.py`, `server.py` (`council_models`, `council_ask`, `council_probe`), `.mcp.json`, `templates/{CHARTER.md,council.json}`, testy na `respx`, README, przegląd 2 modelami (§18) | 1 | **wykonana 2026-09-05** |
-| **0.5** | CI (19.6), `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, repo publiczne; 16.15 (council recenzuje council przez `council_ask`) | 1 | — |
-| **1** | katalog pracy bez `.git` + sync + egzekucja scope (19.1), lock git (19.2), `store.py`, `scheduler.py` (+`depends_on`, fale), `watcher.py`, `render.py`, `council_dispatch/status/cancel`, pętla agentowa Ollama, adapter Gemini `run`, komendy `plan/run/status/stop`, migawki, `HANDOFF.md`, `actor`+`reason` w zdarzeniach (19.4), treść niezaufana (16.8), `council init/doctor` | 3 | — |
+| **0.5** | CI (19.6), `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, repo publiczne; 16.15 (council recenzuje council przez `council_ask`) | 1 | **pliki gotowe 2026-09-05**; publikacja repo i 16.15 — czekają na decyzję użytkownika |
+| **1** | katalog pracy bez `.git` + sync + egzekucja scope (19.1), lock git (19.2), `store.py`, `scheduler.py` (+`depends_on`, fale), `watcher.py`, `render.py`, `council_dispatch/status/cancel`, pętla agentowa Ollama, adapter Gemini `run`, komendy `plan/run/status/stop`, migawki, `HANDOFF.md`, `actor`+`reason` w zdarzeniach (19.4), treść niezaufana (16.8), `council init/doctor` | 3 | **wykonana 2026-09-05** (1 sesja; bez `HANDOFF.md` i bez adaptera Gemini `run` — brak CLI; `council_answer` przeniesione tu z fazy 2). DoD: codex + local równolegle → `review`, blocked→answer→resume działa |
 | **2** | `blocked`→`ANSWER.md` (19.3), Codex/Grok-CLI/claude-sub `run`, `council_plan_validate`, subagenci planner/reviewer/integrator, `review`/`merge`, hook `UserPromptSubmit`, gates (14.5), `trust` + `defects_after_merge` (19.8), playbooki `feature`/`bug-hunt`/`data-internal`, `/council:compare`, `/council:why`, `LESSONS.md` | 4 | — |
 | **3** | dokumentacja użytkownika (§12, EN), pozostałe playbooki, `council bench/night/report`, profile, `council_recall`, `/council:spec|architect|docs`, epiki, tag `v1.0` | 3 | — |
 | **4** | strojenie routingu na `stats`, CI dla repo docelowych, `council export-audit` | po miesiącu użycia | — |
 
 Reguła stopu (§8) obowiązuje po fazie 1 z pomiarem z 19.4.
+
+### 19.11 Ustalenia z pierwszego testu żywego fazy 1 (2026-09-05, `docs/probe-2026-09.md`)
+
+- **Codex CLI** (`codex exec -s workspace-write -c approval_policy=never`) realizuje kontrakt bez uwag: plan → progress → progress → blocked/done, poprawny YAML, zmiany tylko w scope. Sandbox Codexa na Windows nie pozwala uruchomić `python -m pytest` → wykonawca zgłosił `blocked`. Decyzja: **Karta pkt 9** — brak narzędzia nie jest powodem do `blocked`; komendy akceptacji idą do `verify`, uruchamia je orkiestrator/gates.
+- **Ollama `qwen3:8b`** w pętli agentowej: kończy zadanie, ale potrafi zgłosić `done` bez zmiany plików. Decyzja: watcher dodaje `done_without_changes` do `reason` (diff pusty) — reviewer zaczyna od tej flagi. Mały model lokalny nadaje się do `review`/`data`, nie do `implement`.
+- **REPORT.md nie jest ścisłym YAML** w praktyce (`needs: [dlaczego?]` wywala parser). Decyzja: parser łagodny jako fallback (`store._lenient`), `report_invalid` tylko gdy brak front-matter lub nieznany `status`.
+- **Wznowienie po `blocked`**: poprzedni raport trafia do workdir jako `PREVIOUS_REPORT.md` (nie `REPORT.md` — watcher czytałby go jako nowy raport). `ANSWER.md` obok.
+- **GitHub Copilot CLI** (`copilot -p --allow-all-tools --allow-all-paths`) dostępny i zalogowany przez `gh` — dodany jako adapter `copilot` (rola implement/docs/review). Gemini CLI nadal niezainstalowany.
 
 ### 19.10 Ustalenia środowiskowe z kroku 0 (szczegóły w `docs/probe-2026-09.md`)
 

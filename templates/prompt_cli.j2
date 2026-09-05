@@ -1,0 +1,5 @@
+{% if charter %}{{ charter }}
+---
+{% endif %}{% if resume %}Kontynuujesz zadanie {{ task.id }}. Przeczytaj TASK.md, swój poprzedni raport PREVIOUS_REPORT.md oraz ANSWER.md (odpowiedź orkiestratora) w tym katalogu i dokończ pracę. Nowy raport zapisuj do REPORT.md.{% else %}Wykonaj zadanie {{ task.id }} opisane w TASK.md w tym katalogu.{% endif %}
+Pracuj wyłącznie w tym katalogu, zmieniaj tylko pliki ze `scope`, nie używaj git.
+Raportuj przez plik REPORT.md w formacie z TASK.md: najpierw status `plan`, po krokach `progress`, na końcu `done` (albo `blocked` z pytaniami w `needs`, albo `failed`). Zakończ pracę po zapisaniu raportu końcowego.

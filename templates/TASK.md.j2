@@ -1,0 +1,35 @@
+# {{ task.id }} — {{ task.title }}
+
+## Cel
+{{ task.goal }}
+
+## Rola
+{{ task.role }} (próba {{ task.attempt }})
+
+## Scope (wolno zmieniać)
+{% for s in task.scope %}- `{{ s }}`
+{% endfor %}
+## Kontekst (tylko czytać)
+{% for c in task.context_files %}- `{{ c }}`
+{% else %}- (brak)
+{% endfor %}
+## Kryteria akceptacji
+{% for a in task.acceptance %}- {{ a }}
+{% else %}- (brak — kieruj się celem)
+{% endfor %}
+## Format REPORT.md (dosłownie; nadpisuj plik w katalogu roboczym)
+
+```markdown
+---
+task: {{ task.id }}
+status: plan | progress | blocked | done | failed
+percent: 0-100
+touched: [lista plików]
+needs: [pytania, tylko przy blocked]
+verify: [jak sprawdzić, tylko przy done]
+---
+Wolny tekst: co zrobione, co dalej.
+```
+
+## Budżet
+{{ budget.soft_minutes }} min (twardy limit {{ budget.hard_minutes }} min), maks. {{ budget.max_turns }} tur.
