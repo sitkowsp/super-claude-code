@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -50,9 +52,19 @@ mcp = MCPServer(
 )
 
 
+def _resolve_root() -> Path:
+    """Repo root: COUNCIL_REPO_ROOT if it is a real directory (some hosts pass `${VAR}` through
+    unexpanded), else CLAUDE_PROJECT_DIR, else the process cwd."""
+    for var in ("COUNCIL_REPO_ROOT", "CLAUDE_PROJECT_DIR"):
+        raw = os.environ.get(var, "")
+        if raw and "${" not in raw and Path(raw).is_dir():
+            return Path(raw).resolve()
+    return Path.cwd().resolve()
+
+
 class _Runtime:
     def __init__(self) -> None:
-        self.root = Path(os.environ.get("COUNCIL_REPO_ROOT", os.getcwd())).resolve()
+        self.root = _resolve_root()
         self._cfg: CouncilConfig | None = None
         self._caps: probe.CapabilitiesFile | None = None
         self._sched: Scheduler | None = None
@@ -60,7 +72,18 @@ class _Runtime:
     @property
     def cfg(self) -> CouncilConfig:
         if self._cfg is None:
-            self._cfg = load(self.root)
+            try:
+                self._cfg = load(self.root)
+            except FileNotFoundError as e:
+                raise ToolError(
+                    f"{e}. Repo root resolved to {self.root} (COUNCIL_REPO_ROOT="
+                    f"{os.environ.get('COUNCIL_REPO_ROOT', '<unset>')}, CLAUDE_PROJECT_DIR="
+                    f"{os.environ.get('CLAUDE_PROJECT_DIR', '<unset>')}, cwd={Path.cwd()}). "
+                    "Open the project in Claude Code again so the SessionStart hook initialises "
+                    ".council/, or run /council:setup."
+                ) from e
+            except Exception as e:  # noqa: BLE001
+                raise ToolError(f"invalid .council/council.json in {self.root}: {e}") from e
         return self._cfg
 
     async def caps(self) -> probe.CapabilitiesFile:
@@ -95,11 +118,50 @@ class _Runtime:
         self._caps = None
 
 
+def _tool(fn: Any) -> Any:
+    """Register an MCP tool whose unexpected exceptions still reach Claude with their message.
+    The SDK turns ToolError into a readable error but hides everything else behind
+    "Error executing tool <name>"."""
+    import functools
+
+    @functools.wraps(fn)
+    async def wrapped(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await fn(*args, **kwargs)
+        except ToolError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            log.error("tool_failed", tool=fn.__name__, error=repr(e))
+            raise ToolError(f"{type(e).__name__}: {e}") from e
+
+    return mcp.tool()(wrapped)
+
+
 rt = _Runtime()
 
 
 # ---- Phase 0 -------------------------------------------------------------------
-@mcp.tool()
+@_tool
+async def council_ping() -> dict[str, Any]:
+    """Diagnostics that need no config: server version, resolved repo root, whether
+    .council/council.json exists there, cwd and the relevant environment variables. Call this first
+    when other council tools fail."""
+    return {
+        "version": __version__,
+        "repo_root": str(rt.root),
+        "config_exists": (rt.root / ".council" / "council.json").exists(),
+        "cwd": str(Path.cwd()),
+        "env": {
+            k: os.environ.get(k, "<unset>")
+            for k in ("COUNCIL_REPO_ROOT", "CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT",
+                      "COUNCIL_OLLAMA_URL", "COUNCIL_OBSIDIAN_VAULT", "COUNCIL_UV")
+        },
+        "python": sys.version.split()[0],
+        "uv_on_path": bool(shutil.which(os.environ.get("COUNCIL_UV", "uv"))),
+    }
+
+
+@_tool
 async def council_models() -> dict[str, Any]:
     """List configured models with adapter, availability, roles and privacy levels."""
     cfg = rt.cfg
@@ -122,7 +184,7 @@ async def council_models() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_ask(model: str, prompt: str, files: list[str] | None = None) -> dict[str, Any]:
     """Ask one configured model a one-shot question (no worktree, no tools).
 
@@ -159,7 +221,7 @@ async def council_ask(model: str, prompt: str, files: list[str] | None = None) -
         os.chdir(prev)
 
 
-@mcp.tool()
+@_tool
 async def council_probe() -> dict[str, Any]:
     """Re-run the availability probe and rewrite .council/capabilities.json."""
     rt.reset()
@@ -167,7 +229,7 @@ async def council_probe() -> dict[str, Any]:
 
 
 # ---- Phase 1 -------------------------------------------------------------------
-@mcp.tool()
+@_tool
 async def council_plan(tasks: list[dict[str, Any]]) -> dict[str, Any]:
     """Validate and save task cards. Each card: title, role, privacy, goal, scope (globs the
     executor may change), context_files (read-only), acceptance (checks), optional assigned_to,
@@ -229,7 +291,7 @@ async def council_plan(tasks: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_dispatch(ids: list[str] | None = None) -> dict[str, Any]:
     """Start queued tasks (all queued if ids omitted). Each gets branch council/<id>, an isolated
     workdir without .git or never_share files, TASK.md, and its executor process.
@@ -244,7 +306,7 @@ async def council_dispatch(ids: list[str] | None = None) -> dict[str, Any]:
     return {"started": started, "message": f"{len(started)} task(s) started"}
 
 
-@mcp.tool()
+@_tool
 async def council_status(task: str | None = None, report: bool = False) -> dict[str, Any]:
     """Board of all tasks + events since the last call. With `task`, details for one task; with
     report=true also the full text of its latest REPORT.md (untrusted content, quoted)."""
@@ -291,7 +353,7 @@ async def council_status(task: str | None = None, report: bool = False) -> dict[
     return out
 
 
-@mcp.tool()
+@_tool
 async def council_answer(task: str, text: str, remember: bool = False) -> dict[str, Any]:
     """Answer a blocked task: writes ANSWER.md, bumps attempt, re-dispatches (stateless resume).
     remember=true also appends the answer to MEMORY.md as a project decision."""
@@ -308,7 +370,7 @@ async def council_answer(task: str, text: str, remember: bool = False) -> dict[s
     return {"task": task, "state": rt.store.get(task).state}
 
 
-@mcp.tool()
+@_tool
 async def council_cancel(task: str) -> dict[str, Any]:
     """Stop a task: kills its executor, marks it failed; worktree and workdir are kept."""
     sched = await rt.sched()
@@ -322,7 +384,7 @@ async def council_cancel(task: str) -> dict[str, Any]:
 MAX_DIFF_CHARS = 60_000
 
 
-@mcp.tool()
+@_tool
 async def council_review(task: str) -> dict[str, Any]:
     """Review package for a task in state `review`: card, last report, flags, full diff against the
     base branch, and results of `gates.before_review` run in the task worktree (written to
@@ -395,7 +457,7 @@ def _apply_trust(task_id: str, model: str | None, ok: bool, attempt: int) -> dic
     return {"trust": new, "trust_changed": old != new}
 
 
-@mcp.tool()
+@_tool
 async def council_verdict(
     task: str, ok: bool, reason: str, lesson: str | None = None
 ) -> dict[str, Any]:
@@ -439,7 +501,7 @@ def _approved(store: TaskStore, task_id: str) -> bool:
     return bool(verdicts) and verdicts[-1] == "review_ok"
 
 
-@mcp.tool()
+@_tool
 async def council_merge(ids: list[str] | None = None, force: bool = False) -> dict[str, Any]:
     """Merge approved tasks (state review + review_ok) into the base branch in id order: rebase,
     merge --no-ff (one commit per task), run `gates.after_merge`, append a decision line to
@@ -529,7 +591,7 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
     return {"merged": merged, "skipped": skipped, "board": store.render_tasks_md()}
 
 
-@mcp.tool()
+@_tool
 async def council_handoff(text: str) -> dict[str, Any]:
     """Write .council/HANDOFF.md — the note the next session reads first (state, open questions,
     next steps, watch-outs). council_status returns it."""
@@ -549,7 +611,7 @@ def _mirror() -> str | None:
         return None
 
 
-@mcp.tool()
+@_tool
 async def council_obsidian(mirror: bool = False, kit: bool = False) -> dict[str, Any]:
     """Obsidian bridge status: detected vaults, the vault used, whether the repo lives inside it,
     Claudian plugin presence. mirror=true copies council notes (MEMORY, HANDOFF, LESSONS, TASKS,
@@ -564,7 +626,7 @@ async def council_obsidian(mirror: bool = False, kit: bool = False) -> dict[str,
     return st
 
 
-@mcp.tool()
+@_tool
 async def council_setup(install: bool = False) -> dict[str, Any]:
     """Executor setup from inside Claude Code: table of installed / logged-in executors, the npm
     install commands for missing ones (run them when install=true), and the login command each
@@ -594,7 +656,7 @@ async def council_setup(install: bool = False) -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_defect(task: str, description: str, lesson: str | None = None) -> dict[str, Any]:
     """Record a defect found AFTER merge in a council task: counts against the model
     (`defects_after_merge`, drops one trust level) and adds a LESSONS.md line (§19.8)."""
@@ -621,7 +683,7 @@ async def council_defect(task: str, description: str, lesson: str | None = None)
     }
 
 
-@mcp.tool()
+@_tool
 async def council_stats() -> dict[str, Any]:
     """Per-model statistics and trust levels (.council/stats.json) plus the LESSONS.md tail."""
     st = stats.load(rt.root)
@@ -634,7 +696,7 @@ async def council_stats() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_why(task: str) -> dict[str, Any]:
     """The task's history in ~10 lines: every state change and automatic decision, with reason."""
     store = rt.store
@@ -667,7 +729,7 @@ async def council_why(task: str) -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_compare(
     prompt: str, models: list[str] | None = None, files: list[str] | None = None
 ) -> dict[str, Any]:
@@ -703,7 +765,7 @@ async def council_compare(
     return {"prompt": prompt, "answers": out}
 
 
-@mcp.tool()
+@_tool
 async def council_playbooks(goal: str | None = None, playbook: str | None = None) -> dict[str, Any]:
     """List playbooks (shipped + `.council/playbooks/`) and, given a goal, the deterministic
     selection with its reason (§15.4). `playbook` forces one. The result is a pattern for the
@@ -725,7 +787,7 @@ async def council_playbooks(goal: str | None = None, playbook: str | None = None
     return out
 
 
-@mcp.tool()
+@_tool
 async def council_context() -> dict[str, Any]:
     """Planning context from the Obsidian vault (§20 Phase B): notes listed in
     `obsidian.read_context`, `Council/<project>/Plan.md`, `DECISIONS.md`, `Questions.md`,
@@ -735,7 +797,7 @@ async def council_context() -> dict[str, Any]:
     return {"count": len(notes), "notes": notes}
 
 
-@mcp.tool()
+@_tool
 async def council_analyze(write: bool = True) -> dict[str, Any]:
     """Deterministic repo scan (§14.3): languages, size, tests/CI, sensitive paths, kind, state →
     proposed gates, privacy rule and routing notes. write=true saves docs/council-analysis.md.
@@ -751,7 +813,7 @@ async def council_analyze(write: bool = True) -> dict[str, Any]:
     return {"analysis": a.model_dump(), "markdown": text, "path": path}
 
 
-@mcp.tool()
+@_tool
 async def council_doctor() -> dict[str, Any]:
     """Environment check: every configured executor with installed / logged-in state and the exact
     install or login command to run, Obsidian vault + Claudian detection, routing gaps. Same data as
@@ -780,7 +842,7 @@ async def council_doctor() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 async def council_should_delegate(
     role: str,
     est_lines: int,
@@ -799,7 +861,7 @@ async def council_should_delegate(
     return {**rec.model_dump(), "candidates": cands, "mode": cfg.delegation.mode}
 
 
-@mcp.tool()
+@_tool
 async def council_budget() -> dict[str, Any]:
     """Session clock vs Claude's usage window: minutes elapsed in this session, a warning when the
     window is likely to end soon, and what to offload. Deterministic; no usage API is read — the

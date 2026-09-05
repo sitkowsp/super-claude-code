@@ -101,6 +101,7 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_should_delegate` | role, est_lines, est_files?, touches_seams?, privacy? | delegate / self / ask |
 | `council_budget` | – | session minutes, offload hint |
 | `council_doctor` | – | environment check (same as `council doctor`) |
+| `council_ping` | – | no-config diagnostics (root, env, uv) |
 | `council_setup` | install? | executor table, npm install commands (run when install=true), logins needed |
 
 ## CLI

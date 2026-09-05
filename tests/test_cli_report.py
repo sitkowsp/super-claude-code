@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from council_mcp import cli, stats
 from council_mcp.store import Task, TaskStore
 
@@ -50,3 +52,14 @@ def test_init_from_plugin_cache_skips_project_mcp_json(tmp_path: Path) -> None:
     done = cli.init(repo, fake_cache)
     assert ".mcp.json" not in done and not (repo / ".mcp.json").exists()
     assert (repo / ".council" / "council.json").exists()
+
+
+def test_resolve_root_ignores_unexpanded_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from council_mcp import server
+
+    monkeypatch.setenv("COUNCIL_REPO_ROOT", "${CLAUDE_PROJECT_DIR}")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    assert server._resolve_root() == tmp_path.resolve()
+    monkeypatch.delenv("CLAUDE_PROJECT_DIR")
+    monkeypatch.chdir(tmp_path)
+    assert server._resolve_root() == tmp_path.resolve()

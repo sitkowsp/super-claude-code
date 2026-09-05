@@ -70,7 +70,9 @@ plugin's own virtualenv. Everything is reachable as `/council:<name>` slash comm
 uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> council doctor
 ```
 
-Troubleshooting: **a tool such as `council_doctor` is "missing"** means Claude connected to a stale
+Troubleshooting: **every council tool fails with an error** — call `council_ping` (or `/council:doctor`,
+which falls back to it): it shows the repo root the server resolved and the environment it got;
+since rc5 tool errors carry the real exception message. **A tool such as `council_doctor` is "missing"** means Claude connected to a stale
 project-level `.mcp.json` written by an older `council init` (it pins one cached plugin version).
 With the plugin installed, delete the `council` entry from the project's `.mcp.json` — since rc4
 `init` no longer writes it when running from the plugin. **The council MCP server did not connect (CONNECTION_CLOSED)** almost always means
@@ -147,6 +149,8 @@ defaults work with whatever executors `doctor` found. In Claude Code:
 | `council_should_delegate(role, est_lines, est_files?, touches_seams?, privacy?)` | token policy: self / delegate / ask |
 | `council_budget` | session clock vs Claude's usage window, offload hint |
 | `council_doctor` | executors installed / logged in / action, Obsidian, routing gaps |
+| `council_ping` | no-config diagnostics: version, resolved repo root, env vars, uv on PATH — call first when tools fail |
+| `council_setup(install?)` | executor table, npm installs on request, logins needed |
 
 ## Saving Claude tokens (the point of all this)
 
