@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# council runtime (never versioned)
+.council/worktrees/
+.council/capabilities.json
+.council/.last_seen
+.council/logs/
+
+# secrets / local
+.env
+.env.*
+*.pem
+*.key
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

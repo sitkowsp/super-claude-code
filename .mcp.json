@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "council": {
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PROJECT_DIR}", "council-mcp"],
+      "env": {
+        "COUNCIL_REPO_ROOT": "${CLAUDE_PROJECT_DIR}",
+        "COUNCIL_OLLAMA_URL": "http://localhost:11434"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "max_parallel": 3,
+  "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
+  "models": {
+    "local":  {"adapter": "ollama", "url": "${COUNCIL_OLLAMA_URL}", "model": "qwen3-coder:30b",
+               "num_ctx": 32768, "max_parallel": 1,
+               "roles": ["implement", "review", "data"], "privacy": ["public", "internal", "local-only"]},
+    "gemini": {"adapter": "gemini", "cmd": "gemini", "max_parallel": 2,
+               "roles": ["implement", "docs", "review"], "privacy": ["public"]},
+    "codex":  {"adapter": "codex", "cmd": "codex", "max_parallel": 2,
+               "roles": ["implement", "refactor"], "privacy": ["public"]},
+    "grok":   {"adapter": "grok", "mode": "cli", "cmd": "grok", "max_parallel": 1,
+               "roles": ["implement", "review"], "privacy": ["public"]},
+    "cheap":  {"adapter": "claude-sub", "cmd": "claude", "model": "haiku", "max_parallel": 2,
+               "roles": ["chores", "docs"], "privacy": ["public", "internal"]}
+  },
+  "routing": {
+    "by_privacy": {"local-only": ["local"], "internal": ["local", "cheap"],
+                   "public": ["codex", "gemini", "grok", "cheap", "local"]},
+    "by_role":    {"implement": ["codex", "gemini", "local"], "refactor": ["codex"],
+                   "docs": ["gemini", "cheap"], "review": ["grok", "gemini", "local"],
+                   "chores": ["cheap"], "data": ["local"]},
+    "second_opinion": ["grok", "gemini", "local"]
+  },
+  "never_share": [".env", ".env.*", "*.pem", "*.key", "*.p12", "*.sql", "*.dump", "*.bak", "secrets/**"],
+  "memory_file": ".council/MEMORY.md"
+}
