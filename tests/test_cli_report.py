@@ -54,7 +54,9 @@ def test_init_from_plugin_cache_skips_project_mcp_json(tmp_path: Path) -> None:
     assert (repo / ".council" / "council.json").exists()
 
 
-def test_resolve_root_ignores_unexpanded_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_root_ignores_unexpanded_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from council_mcp import server
 
     monkeypatch.setenv("COUNCIL_REPO_ROOT", "${CLAUDE_PROJECT_DIR}")

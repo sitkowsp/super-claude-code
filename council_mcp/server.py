@@ -153,8 +153,14 @@ async def council_ping() -> dict[str, Any]:
         "cwd": str(Path.cwd()),
         "env": {
             k: os.environ.get(k, "<unset>")
-            for k in ("COUNCIL_REPO_ROOT", "CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT",
-                      "COUNCIL_OLLAMA_URL", "COUNCIL_OBSIDIAN_VAULT", "COUNCIL_UV")
+            for k in (
+                "COUNCIL_REPO_ROOT",
+                "CLAUDE_PROJECT_DIR",
+                "CLAUDE_PLUGIN_ROOT",
+                "COUNCIL_OLLAMA_URL",
+                "COUNCIL_OBSIDIAN_VAULT",
+                "COUNCIL_UV",
+            )
         },
         "python": sys.version.split()[0],
         "uv_on_path": bool(shutil.which(os.environ.get("COUNCIL_UV", "uv"))),
