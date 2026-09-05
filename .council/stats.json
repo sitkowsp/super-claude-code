@@ -2,13 +2,13 @@
   "models": {
     "codex": {
       "trust": "probation",
-      "tasks": 1,
-      "review_ok": 2,
+      "tasks": 2,
+      "review_ok": 3,
       "review_reject": 0,
       "first_pass_ok": 1,
       "consecutive_rejects": 0,
       "defects_after_merge": 0,
-      "merged": 1,
+      "merged": 2,
       "cooldown_until": null,
       "fallbacks": 0
     },

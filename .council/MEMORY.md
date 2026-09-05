@@ -1,2 +1,5 @@
 - 2026-09-05T17:00:12+00:00 T-001: Social graphics: two-line install block (marketplace add first, then plugin install) + re-render PNGs (codex, da7dbe4)
 - 2026-09-05T17:00:36+00:00 T-002: Social posts: copy-paste Facebook and Instagram text with both install lines, link in comments (copilot, 89cb594)
+
+- T-003: Rendering is taken over by the chair: headless Edge/Chromium cannot start inside your sandbox (GPU process not usable), so do NOT try to render again. Your HTML fix (.models width 330 -> 270px, 42px gutter) was rendered by the chair and verified visually: the gap is clear, all tile labels fit, nothing is clipped. Do nothing else: do not touch the PNGs, posts.md or graphic-square.html. Write the final REPORT.md with status: done, percent: 100, touched: [docs/social/graphic-wide.html], and in the body one line stating that the PNG re-render is delegated to the chair.
+- 2026-09-05T17:31:46+00:00 T-003: Fix headline/models-column overlap in the Facebook social graphic and re-render both PNGs (codex, fc96b54)
