@@ -57,3 +57,18 @@ def test_store_roundtrip_transitions_events(tmp_path: Path) -> None:
     board = store.render_tasks_md()
     assert "| T-001 | review | implement | - |" in board
     assert (tmp_path / ".council" / "TASKS.md").exists()
+
+
+def test_report_parse_block_list_with_colons() -> None:
+    raw = (
+        "---\ntask: T-003\nstatus: done\npercent: 100\ntouched: [index.html, css/style.css]\n"
+        "needs: []\nverify:\n  - Otworzyć index.html lokalnie (file://)\n"
+        "  - Sprawdzić sekcje: Hero (logo, hasło), O firmie\n  - Network tab: 0 zapytań\n"
+        "dissent: false\n---\nbody"
+    )
+    rep = Report.parse(raw)
+    assert rep.status == "done" and rep.percent == 100 and rep.dissent is False
+    assert rep.touched == ["index.html", "css/style.css"]
+    assert (
+        rep.verify[1] == "Sprawdzić sekcje: Hero (logo, hasło), O firmie" and len(rep.verify) == 3
+    )

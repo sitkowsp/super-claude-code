@@ -60,11 +60,27 @@ def now() -> str:
 def _lenient(fm: str) -> dict[str, Any]:
     """Fallback for front-matter that is not strict YAML (e.g. `needs: [why?]`)."""
     out: dict[str, Any] = {}
+    current: str | None = None  # key whose block list (`  - item`) we are collecting
     for line in fm.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("- ") and current is not None:
+            lst = out.setdefault(current, [])
+            if isinstance(lst, list):
+                lst.append(stripped[2:].strip().strip("\"'"))
+            continue
         if ":" not in line:
             continue
         k, _, v = line.partition(":")
         k, v = k.strip(), v.strip()
+        if not k or " " in k:
+            continue
+        if v == "":
+            out[k] = []
+            current = k
+            continue
+        current = None
         if v.startswith("[") and v.endswith("]"):
             out[k] = [x.strip().strip("\"'") for x in v[1:-1].split(",") if x.strip()]
         elif v.isdigit():
@@ -98,8 +114,19 @@ class Report(BaseModel):
             raise ValueError("front-matter is not a mapping")
         data["body"] = m.group(2).strip()
         for k in ("touched", "needs", "verify"):
-            if isinstance(data.get(k), str):
-                data[k] = [data[k]]
+            v = data.get(k)
+            if isinstance(v, str):
+                data[k] = [v]
+            elif isinstance(v, list):
+                # YAML turns `- text: more text` into {"text": "more text"} — flatten to a string
+                data[k] = [
+                    ": ".join(f"{a}: {b}" if b not in (None, "") else str(a) for a, b in x.items())
+                    if isinstance(x, dict)
+                    else str(x)
+                    for x in v
+                ]
+            elif v is None:
+                data[k] = []
         if isinstance(data.get("dissent"), str):
             data["dissent"] = data["dissent"].strip().lower() in ("true", "yes", "1")
         return cls.model_validate(data)
