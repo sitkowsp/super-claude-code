@@ -6,7 +6,7 @@
       "args": [
         "run",
         "--directory",
-        "${CLAUDE_PLUGIN_ROOT:-.}",
+        "${CLAUDE_PLUGIN_ROOT}",
         "council-mcp"
       ],
       "env": {

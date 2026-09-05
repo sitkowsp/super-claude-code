@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc6-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc7-orange.svg">
 </p>
 
 ```
@@ -125,8 +125,8 @@ uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> c
   `council` entry from the project's `.mcp.json`; since rc4 `init` no longer writes it from the plugin.
 - **CONNECTION_CLOSED** — almost always `uv` is not on the PATH of the process that launched Claude
   Code: restart Claude Code after installing uv, or set `COUNCIL_UV` to the full path of `uv.exe`,
-  then `/mcp` to reconnect. If you opened a **clone of this repo** with an older `.mcp.json`
-  (before rc6), pull: Claude Code does not expand the nested default the old file used.
+  then `/mcp` to reconnect. Plugin versions before rc7 could also fail this way in headless
+  `claude -p` sessions (the manifest used a defaulted variable); update the plugin.
 - **Invalid manifest / stale version** — `claude plugin marketplace update super-claude-code`, then
   `claude plugin update council@super-claude-code`, restart. The first start builds a private
   virtualenv in the plugin cache (10–30 s). The marketplace clones over HTTPS; no SSH key needed.
@@ -143,7 +143,9 @@ uv run --directory /path/to/super-claude-code council doctor
 ```
 
 In a clone the CLI is `uv run council …` (init, setup, doctor, events, obsidian, report,
-session-start); the `.mcp.json` written by `init` points Claude Code at the clone.
+session-start); the `.mcp.json` written by `init` points Claude Code at the clone. The clone's own
+`.mcp.json` is the plugin manifest (`${CLAUDE_PLUGIN_ROOT}` is set only by the plugin loader), so when
+you open the clone itself as a project that entry shows as skipped — expected.
 </details>
 
 ### Executors
