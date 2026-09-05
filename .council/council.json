@@ -101,6 +101,20 @@
       "privacy": [
         "public"
       ]
+    },
+    "grok": {
+      "adapter": "grok",
+      "cmd": "grok",
+      "max_parallel": 1,
+      "roles": [
+        "implement",
+        "review",
+        "assets"
+      ],
+      "privacy": [
+        "public"
+      ],
+      "enabled": true
     }
   },
   "routing": {
@@ -118,7 +132,8 @@
         "copilot",
         "gemini",
         "cheap",
-        "local"
+        "local",
+        "grok"
       ]
     },
     "by_role": {
@@ -127,7 +142,8 @@
         "antigravity",
         "copilot",
         "gemini",
-        "local"
+        "local",
+        "grok"
       ],
       "refactor": [
         "codex",
@@ -138,7 +154,8 @@
         "codex",
         "antigravity",
         "gemini",
-        "copilot"
+        "copilot",
+        "grok"
       ],
       "docs": [
         "copilot",
@@ -152,7 +169,8 @@
         "antigravity",
         "copilot",
         "codex",
-        "gemini"
+        "gemini",
+        "grok"
       ],
       "chores": [
         "local",
@@ -169,7 +187,8 @@
       "antigravity",
       "copilot",
       "codex",
-      "gemini"
+      "gemini",
+      "grok"
     ]
   },
   "never_share": [

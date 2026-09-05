@@ -34,7 +34,7 @@ _ASK_ARGV: dict[str, list[str]] = {
     "antigravity": ["-p", "{prompt}", "--output-format", "text", "--print-timeout", "10m"],
     "codex": ["exec", "--skip-git-repo-check", "--ephemeral", "-s", "read-only", "{prompt}"],
     "copilot": ["-p", "{prompt}", "--silent"],
-    "grok": ["-p", "{prompt}"],
+    "grok": ["-p", "{prompt}", "--output-format", "plain"],
     "claude-sub": ["-p", "{prompt}", "--output-format", "text"],
 }
 
@@ -62,7 +62,7 @@ _RUN_ARGV: dict[str, list[str]] = {
         "{prompt}",
     ],
     "copilot": ["-p", "{prompt}", "--silent", "-C", "{workdir}", "--add-dir", "{workdir}"],
-    "grok": ["-p", "{prompt}"],
+    "grok": ["-p", "{prompt}", "--cwd", "{workdir}", "--output-format", "plain"],
     "claude-sub": ["-p", "{prompt}", "--output-format", "text"],
 }
 _APPROVAL: dict[str, list[list[str]]] = {
@@ -70,7 +70,7 @@ _APPROVAL: dict[str, list[list[str]]] = {
     "antigravity": [["--dangerously-skip-permissions"]],
     "codex": [["-c", "approval_policy=never"]],
     "copilot": [["--allow-all-tools", "--allow-all-paths"], ["--allow-all"]],
-    "grok": [["--yolo"]],
+    "grok": [["--always-approve"], ["--permission-mode", "bypassPermissions"], ["--yolo"]],
     "claude-sub": [
         [
             "--permission-mode",
@@ -81,7 +81,7 @@ _APPROVAL: dict[str, list[list[str]]] = {
     ],
 }
 # Adapters that read AGENTS.md/GEMINI.md themselves; others get the Charter inline in the prompt.
-_READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot"}
+_READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot", "grok"}
 
 
 _SHIM_RE = re.compile(r'"%dp0%\\([^"]+\.[cm]?js)"')

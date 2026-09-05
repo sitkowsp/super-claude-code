@@ -68,11 +68,11 @@ CATALOG: dict[str, Executor] = {
     ),
     "grok": Executor(
         "grok",
-        "Grok Build CLI (unverified)",
+        "xAI Grok Build CLI (grok.com / X account)",
         "grok",
-        "see https://x.ai  (adapter untested)",
-        "grok login",
-        notes="adapter exists but was never exercised — enable at your own risk",
+        "npm i -g @xai-official/grok   (or irm https://x.ai/cli/install.ps1 | iex)",
+        "grok login   (browser OAuth; --device-auth for headless)",
+        npm_package="@xai-official/grok",
     ),
     "claude-sub": Executor(
         "claude-sub",
@@ -132,6 +132,8 @@ async def login_state(adapter: str, cmd_path: str | None) -> bool | None:
         return code == 0
     if adapter == "antigravity":
         return (home / ".gemini" / "google_accounts.json").exists()
+    if adapter == "grok":
+        return (home / ".grok" / "auth.json").exists()
     if adapter == "gemini":
         return bool(os.environ.get("GEMINI_API_KEY")) or None
     if adapter == "claude-sub":
