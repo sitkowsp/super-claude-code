@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shlex
 import time
 from pathlib import Path
@@ -24,6 +25,16 @@ class GatesReport(BaseModel):
     stage: str
     ok: bool
     results: list[GateResult] = Field(default_factory=list)
+
+
+_HOME_RE = re.compile(r"(?i)(?:[A-Za-z]:[\\/]+|/)(?:Users|home)[\\/]+[^\\/\s\"'`]+")
+
+
+def redact(text: str) -> str:
+    """Replace any user home directory (Windows or POSIX, any slash style, also escaped
+    backslashes) with `~`. Gate output is committed under .council/reports/ after a merge, so it
+    must not leak user names into a public repo."""
+    return _HOME_RE.sub("~", text)
 
 
 async def run_one(cmd: str, cwd: Path, timeout_s: float = 600) -> GateResult:
@@ -48,7 +59,7 @@ async def run_one(cmd: str, cwd: Path, timeout_s: float = 600) -> GateResult:
             ok=proc.returncode == 0,
             exit_code=proc.returncode,
             duration_s=round(time.monotonic() - t0, 1),
-            output=out.decode(errors="replace")[-4000:],
+            output=redact(out.decode(errors="replace")[-4000:]),
         )
     except Exception as e:  # noqa: BLE001
         return GateResult(
@@ -56,7 +67,7 @@ async def run_one(cmd: str, cwd: Path, timeout_s: float = 600) -> GateResult:
             ok=False,
             exit_code=None,
             duration_s=round(time.monotonic() - t0, 1),
-            output=str(e),
+            output=redact(str(e)),
         )
 
 

@@ -171,3 +171,14 @@ async def test_reject_redispatches_then_fails_after_max(
     types = [e.type for e in store.events()]
     assert types.count("review_reject") == 2 and types[-1] == "failed"
     w.stop()
+
+
+def test_gates_redact_home() -> None:
+    from council_mcp import gates
+
+    raw = (
+        "VIRTUAL_ENV=C:\\Users\\<user>\\.venv x C:/Users/<user>/y "
+        "/Users/<user>/z /home/<user>/w plain"
+    )
+    out = gates.redact(raw)
+    assert "<user>" not in out and out.endswith("plain") and out.count("~") == 4
