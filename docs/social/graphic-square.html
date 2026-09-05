@@ -36,9 +36,9 @@
   .perk{display:inline-flex;align-items:center;gap:8px;font-size:20px;
     background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:9px 16px}
   .perk svg{width:22px;height:22px}
-  .foot{position:absolute;left:72px;right:72px;bottom:56px;display:flex;justify-content:space-between;align-items:flex-end}
+  .foot{position:absolute;left:72px;right:72px;bottom:24px;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
   .cmd{font-family:Consolas,"Cascadia Mono",monospace;font-size:24px;color:#cfe7ff;background:rgba(0,0,0,.35);
-    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 20px}
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 20px;align-self:flex-start}
   .cmd span{color:#7fb4ff}
   .brand{text-align:right;color:var(--muted);font-size:19px;line-height:1.4}
   .brand b{color:var(--ink);font-size:24px}
@@ -67,7 +67,10 @@
   </div>
 
   <div class="foot">
-    <div class="cmd"><span>/plugin</span> install council@super-claude-code</div>
+    <div class="cmd">
+      <div><span>/plugin</span> marketplace add sitkowsp/super-claude-code</div>
+      <div><span>/plugin</span> install council@super-claude-code</div>
+    </div>
     <div class="brand"><b>super-claude-code</b><br>github.com/sitkowsp/super-claude-code</div>
   </div>
 </div>
