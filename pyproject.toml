@@ -1,6 +1,6 @@
 [project]
 name = "council-mcp"
-version = "1.0.0rc10"
+version = "1.0.0rc11"
 description = "MCP server for the `council` Claude Code plugin: delegate disjoint tasks to other providers' models."
 readme = "README.md"
 license = "MIT"

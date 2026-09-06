@@ -18,8 +18,18 @@ from council_mcp.policy import DelegationPolicy
 from council_mcp.stats import TrustPolicy
 
 Role = Literal[
-    "implement", "refactor", "docs", "assets", "review", "chores", "data", "contract", "adversary"
+    "implement",
+    "refactor",
+    "docs",
+    "assets",
+    "3d",
+    "review",
+    "chores",
+    "data",
+    "contract",
+    "adversary",
 ]
+Reasoning = Literal["low", "medium", "high", "xhigh", "max"]
 Privacy = Literal["public", "internal", "local-only"]
 AdapterName = Literal["ollama", "gemini", "antigravity", "codex", "copilot", "grok", "claude-sub"]
 
@@ -51,6 +61,9 @@ class ModelConfig(BaseModel):
     num_predict: int = 4096
     # CLI adapters
     cmd: str | None = None
+    # codex: `-c model_reasoning_effort=…` / `-c model_context_window=…` (GPT-6 Astra: low…max)
+    reasoning: Reasoning | None = None
+    context_window: int | None = None
     # grok: only the CLI adapter exists (DESIGN.md 19.5 cut `pull`)
     mode: Literal["cli"] | None = None
 

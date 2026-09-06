@@ -13,7 +13,7 @@ import shutil
 import time
 from pathlib import Path
 
-from council_mcp import render
+from council_mcp import render, setup
 from council_mcp.adapters.base import (
     AskResult,
     Capabilities,
@@ -184,8 +184,16 @@ class CliAdapter:
             and self.cfg.adapter == "claude-sub"
         ):
             return ["--model", self.cfg.model]
-        if self.cfg.model and self.cfg.adapter == "codex":
-            return ["-m", self.cfg.model]
+        if self.cfg.adapter == "codex":
+            args: list[str] = []
+            if self.cfg.model:
+                args += ["-m", self.cfg.model]
+            # `-c key=value` values are TOML: strings need quotes, ints do not (Codex ≥0.153).
+            if self.cfg.reasoning:
+                args += ["-c", f'model_reasoning_effort="{self.cfg.reasoning}"']
+            if self.cfg.context_window:
+                args += ["-c", f"model_context_window={self.cfg.context_window}"]
+            return args
         return []
 
     def _approval_args(self) -> list[str]:
@@ -214,7 +222,7 @@ class CliAdapter:
         # Absolute workdir up front: agy/codex image tools default to their own scratch dirs.
         prompt = (
             f"Katalog roboczy (jedyne miejsce zapisu): {workdir.resolve()}\n\n"
-            + render.cli_prompt(task, resume, inline)
+            + render.cli_prompt(task, resume, inline, tools=setup.detect_tools())
         )
         argv = self._exe() + [
             a.replace("{prompt}", prompt).replace("{workdir}", str(workdir))

@@ -1,0 +1,78 @@
+{
+  "name": "game-assets",
+  "description": "3D / gamedev work: textures, materials, Blender scripts, Unreal assets. Codex (GPT-6 Astra) generates textures and code; Claude keeps the asset contract (names, resolutions, formats, folders).",
+  "trigger": [
+    "texture",
+    "tekstura",
+    "tekstury",
+    "material",
+    "materiał",
+    "shader",
+    "mesh",
+    "blender",
+    "unreal",
+    "ue5",
+    "uasset",
+    "3d",
+    "gamedev",
+    "sprite",
+    "normal map"
+  ],
+  "claude_keeps": [
+    "asset contract (names, sizes, formats, target folders, naming of maps)",
+    "engine integration review",
+    "merge"
+  ],
+  "waves": [
+    {
+      "n": 1,
+      "tasks": [
+        {
+          "role": "contract",
+          "assign": "claude",
+          "slice": "one card: list of assets with resolution/format/folder, engine version, acceptance (file exists, dimensions, imports cleanly)"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "parallel": true,
+      "tasks": [
+        {
+          "role": "3d",
+          "assign": "by_role",
+          "slice": "texture sets (albedo/normal/roughness/…) as PNG straight into scope; verify dimensions"
+        },
+        {
+          "role": "3d",
+          "assign": "by_role",
+          "slice": "Blender `bpy` scripts / exports (glTF/FBX) or Unreal code (C++/Blueprint-Python/.ini) — disjoint scope from textures"
+        },
+        {
+          "role": "docs",
+          "assign": "by_role",
+          "slice": "import instructions for the engine, asset list, licence note"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "tasks": [
+        {
+          "role": "review",
+          "assign": "by_role",
+          "slice": "check every file exists, dimensions are powers of two, scripts run headless"
+        },
+        {
+          "role": "integration",
+          "assign": "claude",
+          "slice": "wire assets into the project, merge in id order"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Blender/Unreal missing on this machine → executors still deliver scripts/code plus run instructions (doctor `tools` shows what is installed).",
+    "Textures: powers of two, seamless when tiled, one PNG per map; never left in the tool's scratch folder."
+  ]
+}

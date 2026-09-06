@@ -208,6 +208,47 @@ def list_ollama_models(url: str, timeout: float = 2.0) -> list[str]:
         return []
 
 
+def detect_tools() -> dict[str, str | None]:
+    """Local creative tooling an executor may call headlessly. Values are absolute paths or None.
+    Blender: PATH, `BLENDER_EXE`, or `Program Files/Blender Foundation/Blender*`. Unreal: `UE_ROOT`
+    (engine root) or `Program Files/Epic Games/UE_*` → `UnrealEditor-Cmd.exe` (Windows) /
+    `UnrealEditor-Cmd` (Linux). Never raises."""
+    out: dict[str, str | None] = {"blender": None, "unreal": None}
+    try:
+        b = os.environ.get("BLENDER_EXE") or shutil.which("blender")
+        if not b:
+            for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), "/Applications"):
+                for cand in sorted(
+                    Path(base).glob("Blender Foundation/Blender*/blender.exe")
+                ) + sorted(Path(base).glob("Blender*.app/Contents/MacOS/Blender")):
+                    b = str(cand)
+                    break
+                if b:
+                    break
+        out["blender"] = b if b and Path(b).exists() else None
+        roots: list[Path] = []
+        if os.environ.get("UE_ROOT"):
+            roots.append(Path(os.environ["UE_ROOT"]))
+        roots += sorted(
+            Path(os.environ.get("ProgramFiles", r"C:\Program Files")).glob("Epic Games/UE_*"),
+            reverse=True,
+        )
+        for r in roots:
+            for rel in (
+                "Engine/Binaries/Win64/UnrealEditor-Cmd.exe",
+                "Engine/Binaries/Linux/UnrealEditor-Cmd",
+                "Engine/Binaries/Mac/UnrealEditor-Cmd",
+            ):
+                if (r / rel).exists():
+                    out["unreal"] = str(r / rel)
+                    break
+            if out["unreal"]:
+                break
+    except Exception:  # noqa: BLE001 - detection must never break a dispatch
+        pass
+    return out
+
+
 def apply_probe(
     checks: list[Check],
     errors: dict[str, str | None],

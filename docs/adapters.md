@@ -25,6 +25,22 @@ Because both image-capable CLIs default to their own scratch folders, every run 
 with the absolute workdir and `assets` tasks are told to copy the file into scope and verify its
 size. The watcher's `done_without_changes` flag catches a model that only claims to have written.
 
+## Codex model, reasoning and the `3d` role
+
+`codex` runs GPT-6 Astra by default (`model: gpt-6-astra`, `reasoning: medium`, `context_window: 256000` in
+`council.json`) — passed as `-m` and `-c model_reasoning_effort="…"` / `-c model_context_window=…`
+(Codex CLI ≥ 0.153). Effort levels: `low | medium | high | xhigh | max`. The 256k context is the user's
+chosen cap, not an official limit (OpenAI lists ~1M for the API). Astra's official tools include image
+generation, computer use and MCP.
+
+Role `3d` (textures, materials, Blender, Unreal) routes to Codex → Antigravity. Before each dispatch the
+adapter runs `setup.detect_tools()` (Blender: PATH / `BLENDER_EXE` / Program Files; Unreal: `UE_ROOT` /
+`Program Files/Epic Games/UE_*`) and tells the executor what it may call headlessly (`blender -b --python`,
+`UnrealEditor-Cmd -run=pythonscript`). Missing tools are not a reason to block: the executor leaves
+scripts/code plus run instructions in the task branch. `council_doctor` reports the same paths under
+`tools`. Unreal 5.8+ ships an experimental MCP server that lists Codex as a client
+(`ModelContextProtocol.GenerateClientConfig Codex`); there is no official Blender integration.
+
 ## Adding an adapter
 
 1. If the model has a CLI with a prompt flag: add entries to `_ASK_ARGV`, `_RUN_ARGV`, `_APPROVAL`

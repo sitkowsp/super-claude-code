@@ -12,10 +12,11 @@
       "adapter": "ollama | codex | copilot | antigravity | gemini | grok | claude-sub",
       "enabled": true,
       "max_parallel": 1,
-      "roles": ["implement", "refactor", "docs", "assets", "review", "chores", "data"],
+      "roles": ["implement", "refactor", "docs", "assets", "3d", "review", "chores", "data"],
       "privacy": ["public", "internal", "local-only"],   // what the model may see
       "url": "${COUNCIL_OLLAMA_URL}", "model": "qwen3:8b", "num_ctx": 16384,  // ollama
-      "cmd": "codex", "model": "gemini-3.8-flash-high"                        // CLIs
+      "cmd": "codex", "model": "gpt-6-astra",                                  // CLIs
+      "reasoning": "medium", "context_window": 256000                           // codex only: -c model_reasoning_effort / model_context_window
     }
   },
   "routing": {

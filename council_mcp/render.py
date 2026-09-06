@@ -51,9 +51,16 @@ def system_prompt(repo_root: Path, memory_file: str) -> str:
     )
 
 
-def cli_prompt(task: Task, resume: bool, inline_charter: str | None = None) -> str:
+def cli_prompt(
+    task: Task,
+    resume: bool,
+    inline_charter: str | None = None,
+    tools: dict[str, str | None] | None = None,
+) -> str:
+    """`tools`: local creative tooling detected by setup.detect_tools() (blender, unreal), so a
+    `3d`/`assets` executor knows what it may call headlessly instead of guessing."""
     return _env.get_template("prompt_cli.j2").render(
-        task=task, resume=resume, charter=inline_charter
+        task=task, resume=resume, charter=inline_charter, tools=tools or {}
     )
 
 

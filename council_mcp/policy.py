@@ -18,7 +18,7 @@ Mode = Literal["auto", "ask", "off"]
 Verdict = Literal["delegate", "self", "ask"]
 
 # Roles where delegation is almost always cheaper than Claude doing it inline.
-ALWAYS_DELEGATE = ("docs", "assets", "chores", "review", "data")
+ALWAYS_DELEGATE = ("docs", "assets", "3d", "chores", "review", "data")
 
 
 class DelegationPolicy(BaseModel):

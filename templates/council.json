@@ -49,11 +49,15 @@
         "implement",
         "refactor",
         "assets",
+        "3d",
         "review"
       ],
       "privacy": [
         "public"
-      ]
+      ],
+      "model": "gpt-6-astra",
+      "reasoning": "medium",
+      "context_window": 256000
     },
     "grok": {
       "adapter": "grok",
@@ -110,6 +114,7 @@
         "refactor",
         "docs",
         "assets",
+        "3d",
         "review",
         "chores"
       ],
@@ -181,6 +186,10 @@
       ],
       "data": [
         "local"
+      ],
+      "3d": [
+        "codex",
+        "antigravity"
       ]
     },
     "second_opinion": [

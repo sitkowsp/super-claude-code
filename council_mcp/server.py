@@ -847,6 +847,7 @@ async def council_doctor() -> dict[str, Any]:
             for k, v in caps.models.items()
         },
         "obsidian": obsidian.status(cfg.obsidian, rt.root),
+        "tools": setup.detect_tools(),
         "routing_gaps": gaps,
         "repo_root": str(rt.root),
     }

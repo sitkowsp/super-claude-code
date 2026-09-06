@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc10-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc11-orange.svg">
 </p>
 
 ```
@@ -34,6 +34,7 @@ windows. `council` fixes that:
 - ⚡ **Executors work in parallel** — Codex, Antigravity, Copilot, Grok, Ollama, or a cheap `claude -p` — each in its own copy of the repo, each on its own `council/<id>` branch.
 - 💸 **Your Claude tokens are protected.** A delegation policy sends docs, assets, chores and anything over ~40 lines to an executor. When the window is about to end, `/council:offload` hands the rest over.
 - 🎨 **Images too.** Codex (ChatGPT) and Antigravity (Google) generate real PNG logos and icons straight into your repo.
+- 🎮 **3D and gamedev.** Codex runs **GPT-6 Astra** by default (reasoning `medium`, context 256k, both configurable): texture sets, Blender `bpy` scripts run headless, Unreal C++/Python — all left in the task branch. `/council:doctor` shows whether Blender or Unreal are installed; without them executors still deliver scripts plus run instructions.
 - 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
 - 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
 - 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
@@ -71,6 +72,7 @@ Claude   ── /council:review ── gates + diff → verdict ── /council:
 |---|---|---|
 | code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok |
 | logos, icons, illustrations, diagrams (**PNG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
+| textures, materials, Blender scripts, Unreal code (**GPT-6 Astra via Codex**) | `3d` | Codex → Antigravity |
 | documentation, copy | `docs` | Copilot → Antigravity → cheap Claude → local |
 | review, second opinion, chores | `review`, `chores` | **local Ollama first** (free tokens) → cloud |
 | company data | `data` | local only, never leaves your machine |
@@ -157,7 +159,7 @@ you open the clone itself as a project that entry shows as skipped — expected.
 
 - **Ollama** (local or remote) with a tool-capable model — `qwen3:8b` works on a laptop; `init` picks a
   model you already pulled (coder > qwen3 > …, skipping embedding/vision models) if the default is missing
-- **ChatGPT Codex** — `npm i -g @openai/codex`, `codex login` (generates PNGs)
+- **ChatGPT Codex** — `npm i -g @openai/codex` (≥0.153), `codex login`; default model `gpt-6-astra` at `medium` effort (generates PNGs, textures)
 - **GitHub Copilot** — `npm i -g @github/copilot`, `gh auth login`
 - **Grok Build** — `npm i -g @xai-official/grok`, `grok login`
 - **Google Antigravity** `agy` — from https://antigravity.google, run `agy` once (generates PNGs; the
@@ -204,7 +206,7 @@ lessons for that model and role are injected into its next TASK.md. Executors ma
 
 **Playbooks** (`playbooks/*.json`, override in `.council/playbooks/`) tell the planner how to split
 work: `feature` (default), `bug-hunt` (split hypotheses, `/council:compare`, Claude fixes),
-`data-internal` (everything local-only).
+`data-internal` (everything local-only), `game-assets` (textures / Blender / Unreal via the `3d` role).
 
 ## Obsidian (optional)
 
