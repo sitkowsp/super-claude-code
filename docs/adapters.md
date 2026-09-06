@@ -34,8 +34,10 @@ chosen cap, not an official limit (OpenAI lists ~1M for the API). Astra's offici
 generation, computer use and MCP.
 
 Role `3d` (textures, materials, Blender, Unreal) routes to Codex → Antigravity. Before each dispatch the
-adapter runs `setup.detect_tools()` (Blender: PATH / `BLENDER_EXE` / Program Files; Unreal: `UE_ROOT` /
-`Program Files/Epic Games/UE_*`) and tells the executor what it may call headlessly (`blender -b --python`,
+adapter runs `setup.detect_tools()` (Blender: PATH / `BLENDER_EXE` / Program Files; Unreal, in order:
+`UE_ROOT`, the Epic Launcher install list, the registry, then a shallow scan of every **fixed** disk for
+`UE_*` folders up to three levels deep, e.g. `D:/GAMES/Unreal/UE_5.8`, newest version first; cached per
+process, `council_doctor` rescans) and tells the executor what it may call headlessly (`blender -b --python`,
 `UnrealEditor-Cmd -run=pythonscript`). Missing tools are not a reason to block: the executor leaves
 scripts/code plus run instructions in the task branch. `council_doctor` reports the same paths under
 `tools`. Unreal 5.8+ ships an experimental MCP server that lists Codex as a client

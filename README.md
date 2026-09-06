@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc11-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc12-orange.svg">
 </p>
 
 ```
@@ -34,7 +34,7 @@ windows. `council` fixes that:
 - ⚡ **Executors work in parallel** — Codex, Antigravity, Copilot, Grok, Ollama, or a cheap `claude -p` — each in its own copy of the repo, each on its own `council/<id>` branch.
 - 💸 **Your Claude tokens are protected.** A delegation policy sends docs, assets, chores and anything over ~40 lines to an executor. When the window is about to end, `/council:offload` hands the rest over.
 - 🎨 **Images too.** Codex (ChatGPT) and Antigravity (Google) generate real PNG logos and icons straight into your repo.
-- 🎮 **3D and gamedev.** Codex runs **GPT-6 Astra** by default (reasoning `medium`, context 256k, both configurable): texture sets, Blender `bpy` scripts run headless, Unreal C++/Python — all left in the task branch. `/council:doctor` shows whether Blender or Unreal are installed; without them executors still deliver scripts plus run instructions.
+- 🎮 **3D and gamedev.** Codex runs **GPT-6 Astra** by default (reasoning `medium`, context 256k, both configurable): texture sets, Blender `bpy` scripts run headless, Unreal C++/Python — all left in the task branch. `/council:doctor` shows whether Blender or Unreal are installed (Unreal is found on any local disk, e.g. `D:/GAMES/Unreal/UE_5.8`, or via `UE_ROOT`); without them executors still deliver scripts plus run instructions.
 - 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
 - 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
 - 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
