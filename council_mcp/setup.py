@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -208,44 +209,135 @@ def list_ollama_models(url: str, timeout: float = 2.0) -> list[str]:
         return []
 
 
-def detect_tools() -> dict[str, str | None]:
+_UE_CMD = (
+    "Engine/Binaries/Win64/UnrealEditor-Cmd.exe",
+    "Engine/Binaries/Linux/UnrealEditor-Cmd",
+    "Engine/Binaries/Mac/UnrealEditor-Cmd",
+)
+
+
+def _ue_editor(engine_root: Path) -> Path | None:
+    for rel in _UE_CMD:
+        if (engine_root / rel).exists():
+            return engine_root / rel
+    return None
+
+
+def _ue_version_key(path: Path) -> tuple[int, ...]:
+    m = re.search(r"UE_(\d+)(?:\.(\d+))?", str(path))
+    return (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
+
+
+def _drive_roots() -> list[Path]:
+    """Fixed local disks only. Network / removable / optical drives are skipped: a glob over a
+    mapped share can block for minutes (this hung the test suite once)."""
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            fixed = 3  # DRIVE_FIXED
+            return [
+                Path(f"{d}:/")
+                for d in "CDEFGHIJKLMNOPQRSTUVWXYZ"
+                if ctypes.windll.kernel32.GetDriveTypeW(f"{d}:\\") == fixed
+            ]
+        except Exception:  # noqa: BLE001
+            return [Path("C:/")]
+    return [Path.home(), Path("/opt")]
+
+
+def _ue_registry() -> list[Path]:
+    """`HKLM\\SOFTWARE\\EpicGames\\Unreal Engine\\<ver>\\InstalledDirectory` (Windows only)."""
+    if os.name != "nt":
+        return []
+    out: list[Path] = []
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\EpicGames\Unreal Engine") as k:
+            i = 0
+            while True:
+                try:
+                    sub = winreg.EnumKey(k, i)
+                except OSError:
+                    break
+                i += 1
+                with winreg.OpenKey(k, sub) as sk:
+                    try:
+                        out.append(Path(winreg.QueryValueEx(sk, "InstalledDirectory")[0]))
+                    except OSError:
+                        pass
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def unreal_candidates() -> list[Path]:
+    """Engine roots, most authoritative first: `UE_ROOT`, Epic Launcher's install list, the Windows
+    registry, then a shallow scan of every drive for `UE_*` folders (≤3 levels, e.g.
+    `D:/GAMES/Unreal/UE_5.8`). Never raises."""
+    found: list[Path] = []
+    if os.environ.get("UE_ROOT"):
+        found.append(Path(os.environ["UE_ROOT"]))
+    try:  # Epic Launcher: %ProgramData%/Epic/UnrealEngineLauncher/LauncherInstalled.dat
+        dat = Path(os.environ.get("ProgramData", r"C:\ProgramData")) / (
+            "Epic/UnrealEngineLauncher/LauncherInstalled.dat"
+        )
+        if dat.exists():
+            for item in json.loads(dat.read_text(encoding="utf-8")).get("InstallationList", []):
+                if str(item.get("AppName", "")).startswith("UE_") and item.get("InstallLocation"):
+                    found.append(Path(item["InstallLocation"]))
+    except Exception:  # noqa: BLE001
+        pass
+    found += _ue_registry()
+    scanned: list[Path] = []
+    for drive in _drive_roots():
+        for pat in ("UE_*", "*/UE_*", "*/*/UE_*", "Epic Games/UE_*"):
+            try:
+                scanned += [d for d in drive.glob(pat) if d.is_dir()]
+            except Exception:  # noqa: BLE001
+                continue
+    found += sorted(set(scanned), key=_ue_version_key, reverse=True)
+    seen: set[str] = set()
+    out: list[Path] = []
+    for f in found:
+        if str(f) not in seen:
+            seen.add(str(f))
+            out.append(f)
+    return out
+
+
+_TOOLS_CACHE: dict[str, str | None] | None = None
+
+
+def detect_tools(refresh: bool = False) -> dict[str, str | None]:
     """Local creative tooling an executor may call headlessly. Values are absolute paths or None.
-    Blender: PATH, `BLENDER_EXE`, or `Program Files/Blender Foundation/Blender*`. Unreal: `UE_ROOT`
-    (engine root) or `Program Files/Epic Games/UE_*` → `UnrealEditor-Cmd.exe` (Windows) /
-    `UnrealEditor-Cmd` (Linux). Never raises."""
+    Blender: `BLENDER_EXE`, PATH, or `Program Files/Blender Foundation/Blender*`. Unreal: see
+    `unreal_candidates()` → first root that has `UnrealEditor-Cmd`. The drive scan costs a few
+    seconds, so the result is cached per process (`refresh=True` rescans). Never raises."""
+    global _TOOLS_CACHE
+    if _TOOLS_CACHE is not None and not refresh:
+        return dict(_TOOLS_CACHE)
     out: dict[str, str | None] = {"blender": None, "unreal": None}
     try:
         b = os.environ.get("BLENDER_EXE") or shutil.which("blender")
         if not b:
             for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), "/Applications"):
-                for cand in sorted(
-                    Path(base).glob("Blender Foundation/Blender*/blender.exe")
-                ) + sorted(Path(base).glob("Blender*.app/Contents/MacOS/Blender")):
-                    b = str(cand)
-                    break
-                if b:
+                cands = sorted(Path(base).glob("Blender Foundation/Blender*/blender.exe")) + sorted(
+                    Path(base).glob("Blender*.app/Contents/MacOS/Blender")
+                )
+                if cands:
+                    b = str(cands[-1])
                     break
         out["blender"] = b if b and Path(b).exists() else None
-        roots: list[Path] = []
-        if os.environ.get("UE_ROOT"):
-            roots.append(Path(os.environ["UE_ROOT"]))
-        roots += sorted(
-            Path(os.environ.get("ProgramFiles", r"C:\Program Files")).glob("Epic Games/UE_*"),
-            reverse=True,
-        )
-        for r in roots:
-            for rel in (
-                "Engine/Binaries/Win64/UnrealEditor-Cmd.exe",
-                "Engine/Binaries/Linux/UnrealEditor-Cmd",
-                "Engine/Binaries/Mac/UnrealEditor-Cmd",
-            ):
-                if (r / rel).exists():
-                    out["unreal"] = str(r / rel)
-                    break
-            if out["unreal"]:
+        for r in unreal_candidates():
+            ed = _ue_editor(r)
+            if ed:
+                out["unreal"] = str(ed)
                 break
     except Exception:  # noqa: BLE001 - detection must never break a dispatch
         pass
+    _TOOLS_CACHE = dict(out)
     return out
 
 

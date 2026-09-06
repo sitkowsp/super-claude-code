@@ -58,13 +58,17 @@ def test_detect_tools_from_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     bl.write_text("")
     monkeypatch.setenv("UE_ROOT", str(tmp_path / "UE"))
     monkeypatch.setenv("BLENDER_EXE", str(bl))
-    t = setup.detect_tools()
+    monkeypatch.setattr(setup, "_drive_roots", lambda: [])
+    monkeypatch.setattr(setup, "_ue_registry", lambda: [])
+    monkeypatch.setenv("ProgramData", str(tmp_path / "nopd"))
+    t = setup.detect_tools(refresh=True)
     assert t["unreal"] == str(ue / "UnrealEditor-Cmd.exe") and t["blender"] == str(bl)
     monkeypatch.setenv("BLENDER_EXE", str(tmp_path / "missing.exe"))
     monkeypatch.setenv("UE_ROOT", str(tmp_path / "nope"))
     monkeypatch.setenv("ProgramFiles", str(tmp_path))
     monkeypatch.setattr(setup.shutil, "which", lambda _n: None)
-    assert setup.detect_tools() == {"blender": None, "unreal": None}
+    assert setup.detect_tools(refresh=True) == {"blender": None, "unreal": None}
+    assert setup.detect_tools() == {"blender": None, "unreal": None}  # cached
 
 
 def test_cli_prompt_3d_mentions_tools_or_fallback() -> None:
@@ -81,3 +85,18 @@ def test_game_assets_playbook_selected(tmp_path: Path) -> None:
         "generate seamless textures for the Unreal level", playbooks.load_all(tmp_path)
     )
     assert pb.name == "game-assets" and "unreal" in reason
+
+
+def test_unreal_found_by_drive_scan_newest_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for ver in ("5.6", "5.8"):
+        d = tmp_path / "GAMES" / "Unreal" / f"UE_{ver}" / "Engine" / "Binaries" / "Win64"
+        d.mkdir(parents=True)
+        (d / "UnrealEditor-Cmd.exe").write_text("")
+    monkeypatch.delenv("UE_ROOT", raising=False)
+    monkeypatch.setenv("ProgramData", str(tmp_path / "nopd"))
+    monkeypatch.setattr(setup, "_drive_roots", lambda: [tmp_path])
+    monkeypatch.setattr(setup, "_ue_registry", lambda: [])
+    t = setup.detect_tools(refresh=True)
+    assert t["unreal"] is not None and "UE_5.8" in t["unreal"]
