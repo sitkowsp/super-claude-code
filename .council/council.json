@@ -34,11 +34,15 @@
         "implement",
         "refactor",
         "assets",
-        "review"
+        "review",
+        "3d"
       ],
       "privacy": [
         "public"
-      ]
+      ],
+      "model": "gpt-6-astra",
+      "reasoning": "medium",
+      "context_window": 256000
     },
     "copilot": {
       "adapter": "copilot",
@@ -96,7 +100,8 @@
         "docs",
         "assets",
         "review",
-        "chores"
+        "chores",
+        "3d"
       ],
       "privacy": [
         "public"
@@ -180,6 +185,10 @@
       ],
       "data": [
         "local"
+      ],
+      "3d": [
+        "codex",
+        "antigravity"
       ]
     },
     "second_opinion": [
