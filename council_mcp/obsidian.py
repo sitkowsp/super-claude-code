@@ -169,8 +169,28 @@ def mirror(repo_root: Path, cfg: ObsidianConfig, project: str | None = None) -> 
             dst.mkdir(exist_ok=True)
             for f in src.glob("*"):
                 shutil.copy2(f, dst / f.name)
+    _write_savings(target / "Savings.md", repo_root)
     _write_index(target / "README.md", repo_root, vault, inline=True)
     return target
+
+
+def _write_savings(path: Path, repo_root: Path) -> None:
+    from council_mcp import stats as _stats
+
+    st = _stats.load(repo_root)
+    s = _stats.savings_summary(st)
+    fm: dict[str, object] = {
+        "council_savings": True,
+        "project": repo_root.name,
+        "tokens_saved": s["tokens_saved_est"],
+        "tasks": s["tasks_counted"],
+        "lines": s["lines_merged"],
+        "plan_drafts": s["plan_drafts"],
+        "review_assists": s["review_assists"],
+        "tags": ["council", "savings"],
+    }
+    body = [f"# {repo_root.name} — estimated Claude tokens saved", "", _stats.savings_md(st)]
+    path.write_text(_frontmatter(fm) + "\n".join(body) + "\n", encoding="utf-8")
 
 
 def _frontmatter(d: dict[str, object]) -> str:
@@ -178,6 +198,8 @@ def _frontmatter(d: dict[str, object]) -> str:
     for k, v in d.items():
         if isinstance(v, list):
             lines.append(f"{k}: [{', '.join(str(x) for x in v)}]")
+        elif isinstance(v, bool):
+            lines.append(f"{k}: {'true' if v else 'false'}")  # YAML/Dataview booleans
         else:
             lines.append(f"{k}: {json.dumps(v, ensure_ascii=False) if isinstance(v, str) else v}")
     lines.append("---")

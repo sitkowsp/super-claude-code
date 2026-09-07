@@ -108,7 +108,8 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_verdict` | task, ok, reason, lesson? | review_ok / reject (+ANSWER.md, attempt+1) |
 | `council_merge` | ids?, force? | rebase + merge --no-ff, after-merge gates, MEMORY.md, cleanup |
 | `council_defect` | task, description, lesson? | post-merge defect: trust down, lesson |
-| `council_stats` | – | trust table, counters, LESSONS tail |
+| `council_stats` | – | trust table, counters, LESSONS tail, `savings` (estimate) |
+| `council_savings` | backfill? | estimated Claude tokens saved: total, per model, assistants, method; `backfill=true` counts earlier merges from their commits |
 | `council_why` | task | history with reasons |
 | `council_handoff` | text | write HANDOFF.md (+ Obsidian mirror) |
 | `council_obsidian` | mirror?, kit? | vault detection / mirror / Claudian command kit |
@@ -145,7 +146,7 @@ council session-start [--root DIR]     what the SessionStart hook runs
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
 `/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`,
 `/council:setup`, `/council:chair` (show / `coder fable|executors` / `plan-assist <model|off>` /
-`review-assist <model|off>`). Subagents: `council-planner`, `council-reviewer`,
+`review-assist <model|off>`), `/council:savings [--backfill]` (estimated Claude tokens saved). Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables

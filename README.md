@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc14-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc15-orange.svg">
 </p>
 
 ```
@@ -221,6 +221,17 @@ treated as untrusted data; the plugin's own hooks stay silent inside `claude -p`
 (`COUNCIL_EXECUTOR=1`).
 
 ## Saving Claude tokens — the point of all this
+
+**How much did it save?** `/council:savings` (or `council_savings`, `council report`, the Obsidian
+note `Council/<project>/Savings.md`, and one line at session start) shows an **estimate** of the Claude
+tokens the chair did not spend: per merged task a base by role plus a value per changed line
+(`implement` 1500 + 60/line, `docs` 800 + 40/line, `assets`/`3d` 2500 + 20/line, `review`/`chores`
+600 + 20/line), plus 3000 per plan draft and 800 per review summary from an assistant. It is a
+documented heuristic, not a measurement: the CLIs report no token counts and Claude's own review and
+merge tokens are not subtracted. `/council:savings --backfill` counts tasks merged before the estimate
+existed, from their merge commits. Per-model breakdown and per-project totals land on the Obsidian
+dashboard.
+
 
 The plugin enforces a **delegation policy** (`delegation` in `council.json`, default `mode: auto`):
 

@@ -330,6 +330,9 @@ async def _plan_draft(goal: str, playbook: str | None) -> dict[str, Any]:
         c.pop("id", None)  # ids are assigned here, never by the assistant
         c.pop("assigned_to", None)
     created, errors = _validate_cards(cfg, store, cards)
+    st = stats.load(rt.root)
+    stats.on_assist(st, "plan_draft")
+    stats.save(rt.root, st)
     store.event(
         "-",
         "planned",
@@ -541,6 +544,9 @@ async def council_review(task: str) -> dict[str, Any]:
             os.chdir(rt.root)
             res = await make(ra, rt.cfg.models[ra]).ask(prompt, [])
             assistant = {"model": ra, "text": res.text[:4000], "seconds": res.duration_s}
+            st_a = stats.load(rt.root)
+            stats.on_assist(st_a, "review_assist")
+            stats.save(rt.root, st_a)
         except Exception as e:  # noqa: BLE001 - assistant failure must not block review
             assistant = {"model": ra, "error": str(e)[:300]}
     return {
@@ -644,6 +650,9 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
             skipped.append({"task": tid, "reason": "no review_ok"})
             continue
         try:
+            base_branch = await sched.git.base_branch()
+            async with sched.git.lock:
+                pre_stat = await sched.git.git("diff", "--stat", f"{base_branch}...{t.branch}")
             commit = await sched.git.merge(tid)
         except MergeConflict as e:
             msg = (
@@ -664,9 +673,14 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
         if gates_report:
             gates.write(gates_report, store.reports_dir / tid)
         store.transition(t, "merged", reason=f"merge {commit}")
+        lines_changed = stats.diff_lines(pre_stat)
+        saved = 0
         if t.assigned_to:
             st = stats.load(rt.root)
             st.get(t.assigned_to, rt.cfg.trust.initial).merged += 1
+            saved = stats.on_merge(
+                st, tid, t.assigned_to, t.role, lines_changed, rt.cfg.trust.initial
+            )
             stats.save(rt.root, st)
         store.event(
             tid,
@@ -675,6 +689,8 @@ async def council_merge(ids: list[str] | None = None, force: bool = False) -> di
             actor="claude",
             commit=commit,
             gates_ok=gates_report.ok if gates_report else None,
+            lines=lines_changed,
+            tokens_saved_est=saved,
         )
         mem = rt.root / rt.cfg.memory_file
         mem.parent.mkdir(parents=True, exist_ok=True)
@@ -827,7 +843,45 @@ async def council_stats() -> dict[str, Any]:
         "table": stats.summary(st),
         "models": stats.dump(st)["models"],
         "policy": rt.cfg.trust.model_dump(),
+        "savings": stats.savings_summary(st),
         "lessons_tail": lessons.read_text(encoding="utf-8")[-3000:] if lessons.exists() else "",
+    }
+
+
+@_tool
+async def council_savings(backfill: bool = False) -> dict[str, Any]:
+    """Estimated Claude tokens saved by delegating (heuristic, documented in `method`) plus a
+    summary per model and for the assistants. backfill=true also counts tasks merged before this
+    estimate existed, using `git diff --stat` of each recorded merge commit (each task once)."""
+    st = stats.load(rt.root)
+    added: list[dict[str, Any]] = []
+    if backfill:
+        sched = await rt.sched()
+        store = rt.store
+        for e in store.events():
+            if e.type != "merged" or e.task in st.counted_tasks:
+                continue
+            commit = str(e.data.get("commit", "")) if e.data else ""
+            if not commit:
+                continue
+            try:
+                t = store.get(e.task)
+                async with sched.git.lock:
+                    stat = await sched.git.git("diff", "--stat", f"{commit}^1", commit)
+            except Exception:  # noqa: BLE001 - old commit gone or task unknown: skip
+                continue
+            lines_changed = stats.diff_lines(stat)
+            saved = stats.on_merge(
+                st, e.task, t.assigned_to or "-", t.role, lines_changed, rt.cfg.trust.initial
+            )
+            added.append({"task": e.task, "lines": lines_changed, "tokens_saved_est": saved})
+        if added:
+            stats.save(rt.root, st)
+            _mirror()
+    return {
+        "summary": stats.savings_summary(st),
+        "markdown": stats.savings_md(st),
+        "backfilled": added,
     }
 
 

@@ -250,6 +250,10 @@ def report(root: Path) -> str:
         "",
         st_mod.summary(st) if st.models else "_no data yet_",
         "",
+        "## Estimated Claude tokens saved",
+        "",
+        st_mod.savings_md(st),
+        "",
         "## Tasks",
         "",
         "| id | title | model | state | attempt | reason |",
@@ -349,6 +353,15 @@ def session_start(root: Path, plugin_dir: Path) -> str:
         handoff = root / ".council" / "HANDOFF.md"
         if handoff.exists():
             lines.append("[council] HANDOFF.md exists — read it first (council_status returns it)")
+        from council_mcp import stats as _stats
+
+        sv = _stats.savings_summary(_stats.load(root))
+        if sv["tokens_saved_est"]:
+            total = int(sv["tokens_saved_est"])
+            lines.append(
+                f"[council] delegation so far: ≈{total:,} Claude tokens saved "
+                f"(estimate; {sv['tasks_counted']} merged tasks) — /council:savings for details"
+            )
     except Exception as e:  # noqa: BLE001
         lines.append(f"[council] config problem: {e}")
     return "\n".join(lines)

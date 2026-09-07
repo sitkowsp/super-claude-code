@@ -55,6 +55,17 @@ TABLE title, model, attempt FROM "Council" WHERE council_task AND state = "block
 TABLE WITHOUT ID link(file.link, council_task) AS task, split(file.folder, "/")[1] AS project, title, state, role, model, attempt
 FROM "Council" WHERE council_task SORT created desc
 ```
+## Estimated Claude tokens saved
+```dataview
+TABLE WITHOUT ID project, tokens_saved AS "tokens saved (est.)", tasks, lines, plan_drafts AS "plan drafts", review_assists AS "review summaries"
+FROM "Council" WHERE council_savings SORT tokens_saved desc
+```
+```dataview
+TABLE WITHOUT ID sum(rows.tokens_saved) AS "total tokens saved (est.)", sum(rows.tasks) AS "merged tasks", sum(rows.lines) AS "changed lines"
+FROM "Council" WHERE council_savings GROUP BY true
+```
+_Heuristic per merged task (base by role + per changed line) plus assistant uses; see `/council:savings` for the method._
+
 ## Tasks per model
 ```dataview
 TABLE WITHOUT ID model, length(rows) AS tasks, length(filter(rows, (r) => r.state = "merged")) AS merged

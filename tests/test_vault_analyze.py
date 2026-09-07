@@ -52,7 +52,7 @@ def test_inbox_roundtrip(tmp_path: Path) -> None:
     note = vault.inbox_write(cfg, repo, "T-007", "db choice", ["which db?", "why?"], "body text")
     assert note and note.name == "T-007.md" and vault.inbox_read(cfg, repo) == []
     text = note.read_text(encoding="utf-8").replace('answer: ""', 'answer: "use sqlite"')
-    text = text.replace("remember: False", "remember: true")
+    text = text.replace("remember: false", "remember: true")
     note.write_text(text, encoding="utf-8")
     items = vault.inbox_read(cfg, repo)
     assert (
