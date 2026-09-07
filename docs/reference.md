@@ -18,7 +18,8 @@
       "cmd": "codex", "model": "gpt-6-astra",                                  // CLIs
       "reasoning": "medium", "context_window": 256000,                          // codex only: -c model_reasoning_effort / model_context_window
       "effort": "medium",                                                       // claude-sub only: claude -p --effort
-      "profile": "work2"                                                        // claude-sub only: key of claude_profiles (CLAUDE_CONFIG_DIR)
+      "profile": "work2",                                                       // claude-sub only: key of claude_profiles (CLAUDE_CONFIG_DIR)
+      "tier": "standard"                                                        // low|standard|high — complexity-based selection (see auto_effort)
     }
   },
   "claude_profiles": {"default": null, "work2": "~/.claude-profiles/work2"},   // Claude accounts for claude -p executors
@@ -34,7 +35,7 @@
   "trust": {"promote_after": 3, "demote_after": 2, "probation_max_lines": 150, "initial": "probation"},
   "fallback": {"model": "cheap", "on": ["quota", "no_response", "unavailable"], "cooldown_minutes": 60, "max_fallbacks": 1,
                "by_model": {"fable": ["fable-work2", "codex"]}},              // per-model chain tried before `model`
-  "delegation": {"mode": "auto", "min_lines": 40, "min_files": 2, "warn_after_minutes": 210, "session_budget_minutes": 300},
+  "delegation": {"mode": "auto", "auto_effort": true, "min_lines": 40, "min_files": 2, "warn_after_minutes": 210, "session_budget_minutes": 300},
   "obsidian": {"vault": null, "folder": "Council", "mirror": true, "read_context": []}
 }
 ```
@@ -44,6 +45,26 @@ also in `by_privacy[P]`, is enabled, and passed the probe. No intersection = the
 `assigned_to` on a card overrides routing but still must respect privacy.
 
 Placeholders `${ENV_VAR}` are expanded at load time; never put secrets in the file.
+
+### Complexity → tier and effort (`delegation.auto_effort`, default on)
+
+Every dispatch runs a deterministic assessment of the card (`complexity.assess`): role weight,
+scope breadth (`**`, whole dirs, glob count), goal length, acceptance-criteria count, dependencies,
+complexity/simplicity keywords in the title+goal, and the attempt number (a retry after a rejection
+raises the level). Score ≤2 = `simple`, ≤7 = `standard`, else `complex`. Effects:
+
+| level | model choice (within the routing candidates) | effort sent to the executor |
+|---|---|---|
+| simple | first candidate with `tier: "low"` (template: `cheap`, `local`) | `low` |
+| standard | routing order unchanged | `medium` |
+| complex | first candidate with `tier: "high"` (template: `codex`, `fable`) | `high` |
+
+Effort reaches executors that have such a knob: codex as `-c model_reasoning_effort="…"`,
+`claude -p` as `--effort …`; others ignore it. `assigned_to` on a card still overrides the model
+choice (effort still applies). The decision and its reasons are in the `dispatched` event
+(`council_why`), the level in the task JSON (`complexity`, `effort`), and `council_plan` returns a
+per-card preview. `"auto_effort": false` restores static routing and the cfg-level
+`reasoning`/`effort` values.
 
 ### Chair options
 

@@ -188,7 +188,9 @@ class CliAdapter:
             flags=self.flags,
         )
 
-    def _model_args(self) -> list[str]:
+    def _model_args(self, effort: str | None = None) -> list[str]:
+        """`effort` (from complexity.assess at dispatch) overrides the static cfg effort/reasoning
+        for adapters that have such a knob; ask() and probes keep the cfg defaults."""
         if self.cfg.model and self.cfg.adapter == "antigravity":
             return ["--model", self.cfg.model]
         if (
@@ -198,16 +200,17 @@ class CliAdapter:
             and self.cfg.adapter == "claude-sub"
         ):
             cargs = ["--model", self.cfg.model]
-            if self.cfg.effort:
-                cargs += ["--effort", self.cfg.effort]
+            eff = effort or self.cfg.effort
+            if eff:
+                cargs += ["--effort", eff]
             return cargs
         if self.cfg.adapter == "codex":
             args: list[str] = []
             if self.cfg.model:
                 args += ["-m", self.cfg.model]
             # `-c key=value` values are TOML: strings need quotes, ints do not (Codex ≥0.153).
-            if self.cfg.reasoning:
-                args += ["-c", f'model_reasoning_effort="{self.cfg.reasoning}"']
+            if effort or self.cfg.reasoning:
+                args += ["-c", f'model_reasoning_effort="{effort or self.cfg.reasoning}"']
             if self.cfg.context_window:
                 args += ["-c", f"model_context_window={self.cfg.context_window}"]
             return args
@@ -245,7 +248,7 @@ class CliAdapter:
             a.replace("{prompt}", prompt).replace("{workdir}", str(workdir))
             for a in _RUN_ARGV[self.cfg.adapter]
         ]
-        argv += self._approval_args() + self._model_args()
+        argv += self._approval_args() + self._model_args(task.effort)
         log_dir = self.repo_root / ".council" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / f"{task.id}-{task.attempt}-{self.name}.log"

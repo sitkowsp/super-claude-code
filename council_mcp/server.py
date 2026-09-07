@@ -21,6 +21,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from council_mcp import (
     __version__,
     analyze,
+    complexity,
     gates,
     globs,
     obsidian,
@@ -270,6 +271,9 @@ def _validate_cards(
             if d not in known_ids | {x.id for x in created}:
                 errors.append(f"{t.id}: depends_on unknown {d}")
         try:
+            if cfg.delegation.auto_effort and not t.assigned_to:
+                a = complexity.assess(t)
+                t.complexity, t.effort = a.level, a.effort
             t.assigned_to = t.assigned_to or picker.pick_model(t)
         except ValueError as e:
             errors.append(str(e))
@@ -397,6 +401,10 @@ async def council_plan(
     _mirror()
     return {
         "created": [t.id for t in created],
+        "complexity": {
+            t.id: complexity.assess(t).model_dump(include={"level", "effort", "score"})
+            for t in created
+        },
         "board": store.render_tasks_md(),
         "decisions_from_vault": synced,
     }

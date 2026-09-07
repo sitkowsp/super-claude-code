@@ -163,6 +163,8 @@ class Task(BaseModel):
     violations: list[str] = Field(default_factory=list)
     reason: str | None = None  # why it is in its current state (§16.9)
     fallbacks: int = 0  # how many times this task was moved to the fallback model
+    complexity: str | None = None  # simple|standard|complex — set at dispatch (complexity.assess)
+    effort: str | None = None  # low|medium|high — effort/reasoning override for the executor
 
     def model_post_init(self, _ctx: Any) -> None:
         self.branch = self.branch or f"council/{self.id}"

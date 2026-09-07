@@ -24,7 +24,8 @@
         "public",
         "internal",
         "local-only"
-      ]
+      ],
+      "tier": "low"
     },
     "gemini": {
       "adapter": "gemini",
@@ -57,7 +58,8 @@
       ],
       "model": "gpt-6-astra",
       "reasoning": "medium",
-      "context_window": 256000
+      "context_window": 256000,
+      "tier": "high"
     },
     "grok": {
       "adapter": "grok",
@@ -86,7 +88,8 @@
       "privacy": [
         "public",
         "internal"
-      ]
+      ],
+      "tier": "low"
     },
     "copilot": {
       "adapter": "copilot",
@@ -137,7 +140,8 @@
       "privacy": [
         "public",
         "internal"
-      ]
+      ],
+      "tier": "high"
     }
   },
   "routing": {

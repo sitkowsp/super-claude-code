@@ -10,7 +10,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from council_mcp import render, stats
+from council_mcp import complexity, render, stats
 from council_mcp.adapters import make
 from council_mcp.adapters.base import Adapter, RunHandle
 from council_mcp.config import CouncilConfig
@@ -122,6 +122,13 @@ class Scheduler:
         cands = [c for c in cands if not stats.in_cooldown(st.get(c), now)] or cands
         if not cands:
             raise ValueError(f"{task.id}: no model for role={task.role} privacy={task.privacy}")
+        # complexity-based tier preference (delegation.auto_effort): a simple task takes the first
+        # low-tier candidate, a complex one the first high-tier; routing order breaks ties.
+        want = {"simple": "low", "complex": "high"}.get(task.complexity or "")
+        if want:
+            for c in cands:
+                if self.cfg.models[c].tier == want:
+                    return c
         return cands[0]
 
     def dispatch(self, ids: list[str]) -> list[str]:
@@ -132,6 +139,9 @@ class Scheduler:
                 continue
             if tid in self.jobs and not self.jobs[tid].done():
                 continue
+            if self.cfg.delegation.auto_effort:
+                a = complexity.assess(task)
+                task.complexity, task.effort = a.level, a.effort
             model = self.pick_model(task)
             task.assigned_to = model
             self.store.save(task)
@@ -196,7 +206,12 @@ class Scheduler:
                     "dispatched",
                     model=model,
                     actor="claude",
-                    reason=f"role={task.role} privacy={task.privacy} attempt={task.attempt}",
+                    reason=f"role={task.role} privacy={task.privacy} attempt={task.attempt}"
+                    + (
+                        f" complexity={task.complexity} effort={task.effort}"
+                        if task.complexity
+                        else ""
+                    ),
                     workdir=str(wd),
                     branch=task.branch,
                     resume=resume,

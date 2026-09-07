@@ -27,6 +27,8 @@ class DelegationPolicy(BaseModel):
     min_lines: int = 40  # estimated changed lines above which implement work is delegated
     min_files: int = 2  # or number of files to touch
     always_delegate_roles: list[str] = Field(default_factory=lambda: list(ALWAYS_DELEGATE))
+    # assess each card's complexity at dispatch: pick model tier + effort automatically
+    auto_effort: bool = True
     keep_for_claude: list[str] = Field(
         default_factory=lambda: ["contracts", "integration", "merge", "security", "small hotfix"]
     )

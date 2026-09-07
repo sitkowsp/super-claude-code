@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc23-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc24-orange.svg">
 </p>
 
 ```
@@ -37,6 +37,7 @@ windows. `council` fixes that:
 - 🎮 **3D and gamedev.** Codex runs **GPT-6 Astra** by default (reasoning `medium`, context 256k, both configurable): texture sets, Blender `bpy` scripts run headless, Unreal C++/Python — all left in the task branch. `/council:doctor` shows whether Blender or Unreal are installed (Unreal is found on any local disk, e.g. `D:/GAMES/Unreal/UE_5.8`, or via `UE_ROOT`); without them executors still deliver scripts plus run instructions.
 - 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
 - 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
+- 🎚️ **Right-sized executors.** Every dispatch scores the card's complexity (deterministic: scope, role, keywords, criteria, retry count) and picks the tier and effort to match — a typo fix runs on the cheap model at `low` effort, a refactor goes to GPT-6 Astra / Fable at `high`. `council_why` shows the reasoning; `delegation.auto_effort: false` turns it off.
 - 🪑 **Chair options.** Let GPT-6 Astra draft the plan and summarise reviews for Claude (`/council:chair plan-assist codex`), or let Claude Fable 5.1 write the code at `medium` effort (`/council:chair coder fable`). Defaults stay as they are; see "Choose your chair setup".
 - 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
 

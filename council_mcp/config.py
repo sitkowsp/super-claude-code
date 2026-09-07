@@ -66,6 +66,9 @@ class ModelConfig(BaseModel):
     context_window: int | None = None
     # claude-sub: `--effort low|medium|high|xhigh|max` (Claude Code CLI)
     effort: Reasoning | None = None
+    # capability tier for complexity-based selection: a "simple" task prefers a "low"-tier
+    # candidate, a "complex" one a "high"-tier candidate (delegation.auto_effort)
+    tier: Literal["low", "standard", "high"] = "standard"
     # claude-sub: which Claude account this executor runs under — a key of `claude_profiles`.
     # None = the default Claude Code login. `config_dir` is derived (CLAUDE_CONFIG_DIR).
     profile: str | None = None

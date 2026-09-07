@@ -38,7 +38,9 @@ queued ── /council:run ──▶ running ──▶ review ── /council:re
 **Plan and run**
 - `/council:plan <goal>` — split the goal into 1–4 disjoint task cards (playbook-driven); with
   `chair.plan_assist` on, an assistant model drafts the cards first. Nothing runs until you say ok.
-- `/council:run` — dispatch queued cards (branch + isolated workdir + executor per card).
+- `/council:run` — dispatch queued cards (branch + isolated workdir + executor per card). Each card
+  is complexity-scored on the way out: simple → cheaper model + `low` effort, complex → top model +
+  `high` effort (`delegation.auto_effort`; `/council:why` explains the pick).
 - `/council:status` — board, new events, HANDOFF.md; also applies answers from the Obsidian inbox.
 - `/council:answer T-001 <text>` — answer a blocked task and resume it.
 - `/council:stop T-001` — kill the executor, mark failed, keep the worktree for inspection.
