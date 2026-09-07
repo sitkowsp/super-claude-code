@@ -128,6 +128,14 @@ note update), rewritten by every mirror — so it is current even without Datavi
 content outside the markers. Install the **Dataview** community plugin for the tables and **Claudian** to chat with Claude Code
 from the vault.
 
+## Which commands work where
+
+The vault kit commands (`/council-status`, `/council-answer`, `/council-decide`,
+`/council-handoff`) are file-based and work **in Claudian**; everything that starts, reviews or
+merges work (`/council:*`) needs a Claude Code session **on the project repo**. The kit writes this
+table into the vault's `README.md` (between `<!-- council:readme -->` markers); the full command
+manual is [manual.md](manual.md).
+
 ## If you do not have Obsidian or Claudian
 
 Council works without them. `/council:doctor` prints a one-line suggestion:

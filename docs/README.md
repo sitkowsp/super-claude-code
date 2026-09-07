@@ -1,6 +1,7 @@
 # council documentation
 
 - [Getting started](getting-started.md) — install, initialise a project, first epic
+- [The manual](manual.md) — every command, where it runs (repo session / Claudian vault / terminal), what to do per task state
 - [Reference](reference.md) — `council.json`, task cards, REPORT.md, MCP tools, CLI, commands
 - [Adapters](adapters.md) — Codex, Antigravity, Copilot, Gemini, Claude, Ollama; adding one
 - [Recipes and playbooks](recipes.md) — feature, bug-hunt, data-internal, graphics, probation

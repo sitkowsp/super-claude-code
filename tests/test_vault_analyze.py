@@ -89,3 +89,19 @@ def test_analyze_scan_python_repo(tmp_path: Path) -> None:
     md = analyze.render(a, "x")
     assert "Proposed gates" in md and "uv run pytest -q" in md and "no CI detected" in md
     assert analyze.scan(tmp_path) == a  # deterministic
+
+
+def test_write_kit_adds_readme_block_once(tmp_path: Path) -> None:
+    from council_mcp.obsidian import ObsidianConfig
+
+    v = tmp_path / "V"
+    (v / ".obsidian").mkdir(parents=True)
+    (v / "README.md").write_text("# my vault\n\nkeep me\n", encoding="utf-8")
+    cfg = ObsidianConfig(vault=str(v))
+    written = vault.write_kit(cfg, tmp_path)
+    assert "README.md" in written
+    txt = (v / "README.md").read_text(encoding="utf-8")
+    assert "keep me" in txt and "Which commands work where" in txt
+    assert "/council-answer" in txt and "/council:merge" in txt
+    assert "README.md" not in vault.write_kit(cfg, tmp_path)  # idempotent
+    assert txt.count("<!-- council:readme -->") == 1

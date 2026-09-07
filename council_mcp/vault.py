@@ -199,6 +199,38 @@ state, blocked questions, planned next steps, warnings.
 }
 
 
+README_MARKER = "<!-- council:readme -->"
+README_BLOCK = (
+    README_MARKER
+    + """
+## Which commands work where
+
+**Here in the vault (Claudian chat)** — file-based, they read/write the mirrored notes:
+- `/council-status` — board across projects; `/council-answer T-001 <text>` — answer a **blocked**
+  task via `inbox/` (the repo session applies it on its next `/council:status`);
+- `/council-decide <text>` — append a decision (merged into the repo's MEMORY.md at the next plan);
+- `/council-handoff` — read/extend the handoff note.
+
+**Only in a Claude Code session opened on the project repo** — they need the council MCP server
+bound to that repo: `/council:plan`, `/council:run` (start **queued**), `/council:status`,
+`/council:answer`, `/council:stop`, `/council:review` + `/council:merge` (handle **review**),
+`/council:merge --reconcile` (hand-merged work), `/council:why` (**failed**), `/council:defect`,
+`/council:savings`, `/council:chair`, `/council:accounts`, `/council:doctor`, `/council:setup`,
+`/council:offload`, `/council:analyze`, `/council:ask`, `/council:compare`, `/council:handoff`.
+
+| task state | in this vault | in the repo session |
+|---|---|---|
+| queued / running | read the note | `/council:run`, `/council:status`, `/council:stop` |
+| **blocked** | `/council-answer T-001 <text>` | `/council:answer T-001 <text>` |
+| **review** | read the diff summary | `/council:review` → `/council:merge` (or `--reconcile`) |
+| merged | read MEMORY / Savings | `/council:defect` if a bug surfaces |
+| failed | read the `reason` | `/council:why`, fix the card, `/council:plan` |
+
+Full manual: https://github.com/sitkowsp/super-claude-code/blob/main/docs/manual.md
+"""
+)
+
+
 def write_kit(cfg: ObsidianConfig, repo_root: Path) -> list[str]:
     vault = resolve_vault(cfg, repo_root)
     if not vault:
@@ -224,4 +256,9 @@ def write_kit(cfg: ObsidianConfig, repo_root: Path) -> list[str]:
             existing.rstrip() + ("\n\n" if existing else "") + block, encoding="utf-8"
         )
         written.append("CLAUDE.md")
+    readme = vault / "README.md"
+    txt = readme.read_text(encoding="utf-8") if readme.exists() else "# Council vault\n"
+    if README_MARKER not in txt:
+        readme.write_text(txt.rstrip() + "\n\n" + README_BLOCK + "\n", encoding="utf-8")
+        written.append("README.md")
     return written

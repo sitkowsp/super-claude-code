@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc21-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc22-orange.svg">
 </p>
 
 ```
@@ -178,7 +178,9 @@ you open the clone itself as a project that entry shows as skipped — expected.
 /council:merge
 ```
 
-Full walkthrough: [docs/getting-started.md](docs/getting-started.md). Recipes (bug-hunt with
+Full walkthrough: [docs/getting-started.md](docs/getting-started.md). **Every command, where it
+runs (repo session vs Claudian vault vs terminal) and what to do per task state:
+[docs/manual.md](docs/manual.md).** Recipes (bug-hunt with
 `/council:compare`, assets epics, end-of-session offload): [docs/recipes.md](docs/recipes.md).
 
 ## Choose your chair setup (optional)
