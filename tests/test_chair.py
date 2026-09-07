@@ -69,6 +69,10 @@ def test_set_chair_edits_config_and_enables_coder(tmp_path: Path) -> None:
     assert data["chair"] == {"plan_assist": "codex", "review_assist": None, "coder": "fable"}
     assert data["models"]["fable"]["enabled"] is True
     assert setup.set_chair(tmp_path, plan_assist="off") == ["plan_assist"]
+    assert setup.set_chair(tmp_path, coder="executors") == ["coder"]
+    data = json.loads((tmp_path / ".council" / "council.json").read_text(encoding="utf-8"))
+    assert data["models"]["fable"]["enabled"] is False  # Claude coder switched off again
+    setup.set_chair(tmp_path, coder="fable")
     with pytest.raises(ValueError):
         setup.set_chair(tmp_path, coder="ghost")
     line = setup.chair_line(

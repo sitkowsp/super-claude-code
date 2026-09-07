@@ -370,10 +370,17 @@ def set_chair(
             chair[key] = None if val in ("off", "none", "") else val
             changed.append(key)
     if coder is not None:
+        prev = chair.get("coder", "executors")
         chair["coder"] = coder
         changed.append("coder")
-        if coder != "executors" and coder in data.get("models", {}):
-            data["models"][coder]["enabled"] = True
+        models = data.get("models", {})
+        if coder != "executors" and coder in models:
+            models[coder]["enabled"] = True
+        if coder == "executors" and prev != "executors" and prev in models:
+            # Back to default: a Claude-backed coder must not linger as an enabled fallback
+            # candidate and silently spend the user's Claude window.
+            if models[prev].get("adapter") == "claude-sub":
+                models[prev]["enabled"] = False
     from council_mcp.config import CouncilConfig as _Cfg
 
     _Cfg.model_validate(data)  # raise before writing anything

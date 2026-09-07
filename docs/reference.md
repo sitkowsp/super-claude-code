@@ -52,7 +52,7 @@ existing tasks, never_share) and returns them **validated but unsaved** (`draft`
 `assistant_review` (`templates/review_assist.j2`, max 12 lines; failures are reported, never block).
 `chair.coder`: `"executors"` or a model name that `candidates()` puts first for `implement`/`refactor`
 only. The template ships `fable` (`claude-sub`, `claude-fable-5-1`, `effort: medium`, disabled);
-`council_setup(coder="fable")` enables it. Change with `/council:chair`, `council_setup(...)` or
+`council_setup(coder="fable")` enables it; `coder="executors"` disables a Claude-backed coder again. Change with `/council:chair`, `council_setup(...)` or
 `council setup --coder … --plan-assist … --review-assist …`; `council_doctor` reports the `chair` line.
 
 ## Task card
