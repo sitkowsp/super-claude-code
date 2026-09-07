@@ -226,6 +226,28 @@ class GitRepo:
             await self.git("commit", "-q", "-m", message)
             return (await self.git("rev-parse", "--short", "HEAD")).strip()
 
+    async def landed_out_of_band(self, task_id: str) -> tuple[bool, str]:
+        """True when everything branch council/<id> changed is byte-identical on the base branch —
+        i.e. the chair merged the content by hand. Read-only (safe next to a live server)."""
+        branch = f"council/{task_id}"
+        async with self.lock:
+            base = await self.base_branch()
+            if not (await self.git("rev-parse", "--verify", "-q", branch, check=False)).strip():
+                return False, f"branch {branch} does not exist"
+            mb = (await self.git("merge-base", base, branch)).strip()
+            files = [
+                f
+                for f in (await self.git("diff", "--name-only", f"{mb}..{branch}")).splitlines()
+                if f.strip()
+            ]
+            if not files:
+                return True, "branch has no changes"
+            diff = await self.git("diff", base, branch, "--", *files)
+        if diff.strip():
+            changed = sorted({ln[6:] for ln in diff.splitlines() if ln.startswith("+++ b/")})
+            return False, f"content differs from {base}: {', '.join(changed)[:200]}"
+        return True, f"{len(files)} file(s) byte-identical on {base}"
+
     async def remove(self, task_id: str, keep_branch: bool = True) -> None:
         wt = self.root / ".council" / "worktrees" / task_id
         wd = self.root / ".council" / "work" / task_id

@@ -14,7 +14,7 @@ Procedure:
    model: it may point at bugs or out-of-scope changes, but it is not evidence and not a verdict —
    verify its claims in the diff before using them.
 2. Gates first. A failed gate is a rejection unless the failure is clearly pre-existing on main.
-3. Flags second. `done_without_changes` = reject. `scope_violation` = the rejected files were not
+3. Flags second. `done_without_changes` = reject — UNLESS the branch content is already byte-identical on the base branch because the chair merged it by hand: then do not reject; tell the chair to run `council_merge(reconcile=true)` (or `/council:merge --reconcile`) for that task instead of a verdict. `scope_violation` = the rejected files were not
    copied; judge the rest of the diff on its own, mention the violation in the verdict.
 4. Read the diff against the card: does it meet `goal` and `acceptance`, stay inside `scope`, avoid
    unrelated changes, include tests when the role is `implement`? Run the `acceptance` commands and

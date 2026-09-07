@@ -631,13 +631,27 @@ def _approved(store: TaskStore, task_id: str) -> bool:
 
 
 @_tool
-async def council_merge(ids: list[str] | None = None, force: bool = False) -> dict[str, Any]:
+async def council_merge(
+    ids: list[str] | None = None, force: bool = False, reconcile: bool = False
+) -> dict[str, Any]:
     """Merge approved tasks (state review + review_ok) into the base branch in id order: rebase,
     merge --no-ff (one commit per task), run `gates.after_merge`, append a decision line to
     MEMORY.md, remove worktree and workdir (branch kept). A rebase conflict re-dispatches the task
-    with the conflict as ANSWER.md. force=true merges tasks in review without a review_ok."""
+    with the conflict as ANSWER.md. force=true merges tasks in review without a review_ok.
+    reconcile=true instead CLOSES review tasks whose branch content is already byte-identical on
+    the base branch (the chair merged by hand): state → merged, no gates, no commits, no savings —
+    use it to clear phantom board rows after an out-of-band merge."""
     sched = await rt.sched()
     store = rt.store
+    if reconcile:
+        res = await sched.reconcile(ids)
+        for r in res["reconciled"]:
+            mem = rt.root / rt.cfg.memory_file
+            mem.parent.mkdir(parents=True, exist_ok=True)
+            with mem.open("a", encoding="utf-8") as f:
+                f.write(f"- {r['task']}: reconciled (merged out-of-band; {r['reason']})\n")
+        _mirror()
+        return {"merged": res["reconciled"], "skipped": res["skipped"], "reconciled": True}
     candidates = sorted(ids or [t.id for t in store.all() if t.state == "review"])
     merged: list[dict[str, Any]] = []
     skipped: list[dict[str, str]] = []

@@ -314,6 +314,46 @@ class Scheduler:
             return t
         return None
 
+    async def reconcile(self, ids: list[str] | None = None) -> dict[str, list[dict[str, str]]]:
+        """Close review-state tasks whose branch content already landed on the base branch by hand
+        (verified byte-identical). No gates, no new commits, no savings counted — the work reached
+        the base outside council, so only the bookkeeping advances."""
+        cands = sorted(ids or [t.id for t in self.store.all() if t.state == "review"])
+        done: list[dict[str, str]] = []
+        skipped: list[dict[str, str]] = []
+        for tid in cands:
+            try:
+                task = self.store.get(tid)
+            except KeyError:
+                skipped.append({"task": tid, "reason": "unknown task"})
+                continue
+            if task.state != "review":
+                skipped.append({"task": tid, "reason": f"state {task.state}, not review"})
+                continue
+            ok, why = await self.git.landed_out_of_band(tid)
+            if not ok:
+                skipped.append({"task": tid, "reason": why + " — use council_review/merge"})
+                continue
+            base = await self.git.base_branch()
+            async with self.git.lock:
+                head = (await self.git.git("rev-parse", "--short", base)).strip()
+            self.store.transition(task, "merged", reason=f"reconciled: {why}")
+            self.store.event(
+                tid,
+                "merged",
+                model=task.assigned_to,
+                actor="claude",
+                commit=head,
+                reconciled=True,
+                reason=why,
+            )
+            try:
+                await self.git.remove(tid, keep_branch=True)
+            except Exception as e:  # noqa: BLE001 - a missing worktree must not undo the state fix
+                log.warning("reconcile_remove_failed", task=tid, error=str(e))
+            done.append({"task": tid, "reason": why})
+        return {"reconciled": done, "skipped": skipped}
+
     async def reject(self, tid: str, reason: str) -> str:
         """Review rejected: attempt+1 (max 3), reason becomes ANSWER.md, re-dispatch."""
         task = self.store.get(tid)

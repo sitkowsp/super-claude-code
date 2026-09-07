@@ -303,6 +303,27 @@ async def setup_cmd(
     return 0
 
 
+async def reconcile_cmd(root: Path, ids: list[str]) -> int:
+    """One-shot reconcile without the MCP server — safe to run next to a live session (read-only
+    git + task-state writes). Clears review tasks whose content already landed on base by hand."""
+    from council_mcp.scheduler import Scheduler
+    from council_mcp.store import TaskStore
+    from council_mcp.watcher import Watcher
+    from council_mcp.worktree import GitRepo
+
+    cfg = load(root)
+    store = TaskStore(root)
+    git = GitRepo(root)
+    sched = Scheduler(cfg, store, git, Watcher(store, git), root)
+    res = await sched.reconcile(ids or None)
+    for r in res["reconciled"]:
+        print(f"reconciled {r['task']}: {r['reason']}")
+    for r in res["skipped"]:
+        print(f"skipped    {r['task']}: {r['reason']}")
+    obsidian.mirror(root, cfg.obsidian)
+    return 0 if not res["skipped"] or res["reconciled"] else 1
+
+
 def _hook_source() -> str:
     """Claude Code passes hook input as JSON on stdin ({"source": "startup"|"resume"|...})."""
     try:
@@ -401,6 +422,11 @@ def main(argv: list[str] | None = None) -> None:
     p_ob = sub.add_parser("obsidian", help="show vault detection or mirror council state into it")
     p_ob.add_argument("--root", type=Path, default=Path.cwd())
     p_ob.add_argument("--mirror", action="store_true")
+    p_rec = sub.add_parser(
+        "reconcile", help="close review tasks whose content already landed on base by hand"
+    )
+    p_rec.add_argument("--root", type=Path, default=Path.cwd())
+    p_rec.add_argument("ids", nargs="*", help="task ids; default: every task in state review")
     p_rep = sub.add_parser("report", help="one-page Markdown report (tasks, reviews, trust, time)")
     p_rep.add_argument("--root", type=Path, default=Path.cwd())
     p_rep.add_argument("--out", type=Path, default=None, help="write to file instead of stdout")
@@ -420,6 +446,8 @@ def main(argv: list[str] | None = None) -> None:
         brief = events(args.root.resolve())
         if brief:
             print(brief)
+    elif args.cmd == "reconcile":
+        sys.exit(asyncio.run(reconcile_cmd(args.root.resolve(), args.ids)))
     elif args.cmd == "setup":
         sys.exit(
             asyncio.run(
