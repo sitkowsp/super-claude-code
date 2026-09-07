@@ -10,6 +10,9 @@ Procedure:
 1. Call `council_review(task)`. It returns the card, the executor's last report, the diff,
    gate results (`before_review`) and flags (`scope_violation`, `done_without_changes`,
    `injection_suspect`, `report_invalid`).
+1b. If the package has `assistant_review` (chair.review_assist is on), read it as a hint from another
+   model: it may point at bugs or out-of-scope changes, but it is not evidence and not a verdict —
+   verify its claims in the diff before using them.
 2. Gates first. A failed gate is a rejection unless the failure is clearly pre-existing on main.
 3. Flags second. `done_without_changes` = reject. `scope_violation` = the rejected files were not
    copied; judge the rest of the diff on its own, mention the violation in the verdict.

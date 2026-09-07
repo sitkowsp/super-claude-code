@@ -8,6 +8,7 @@ Approval flags are chosen from the flags detected by `probe` (never assumed).
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import shutil
 import time
@@ -102,12 +103,19 @@ def shim_target(path: str) -> list[str]:
     return [node, str(Path(path).parent / m.group(1))]
 
 
+def executor_env() -> dict[str, str]:
+    """Environment for executor processes. COUNCIL_EXECUTOR=1 tells this plugin's own hooks (when
+    the executor is `claude -p`) to stay silent instead of initialising `.council/` there."""
+    return {**os.environ, "COUNCIL_EXECUTOR": "1"}
+
+
 async def _run(argv: list[str], timeout_s: float, cwd: Path | None = None) -> tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
         *argv,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         cwd=str(cwd) if cwd else None,
+        env=executor_env(),
     )
     try:
         out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
@@ -183,7 +191,10 @@ class CliAdapter:
             or self.cfg.model
             and self.cfg.adapter == "claude-sub"
         ):
-            return ["--model", self.cfg.model]
+            cargs = ["--model", self.cfg.model]
+            if self.cfg.effort:
+                cargs += ["--effort", self.cfg.effort]
+            return cargs
         if self.cfg.adapter == "codex":
             args: list[str] = []
             if self.cfg.model:
@@ -245,6 +256,7 @@ class CliAdapter:
                         stdout=logf,
                         stderr=asyncio.subprocess.STDOUT,
                         stdin=asyncio.subprocess.DEVNULL,
+                        env=executor_env(),
                     )
                     code = await wait_with_budget(proc, handle, budget)
                 handle.finish(code, "cancelled" if handle.cancelled else None)

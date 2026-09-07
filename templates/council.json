@@ -121,6 +121,23 @@
       "privacy": [
         "public"
       ]
+    },
+    "fable": {
+      "adapter": "claude-sub",
+      "cmd": "claude",
+      "enabled": false,
+      "model": "claude-fable-5-1",
+      "effort": "medium",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "refactor",
+        "review"
+      ],
+      "privacy": [
+        "public",
+        "internal"
+      ]
     }
   },
   "routing": {
@@ -130,7 +147,8 @@
       ],
       "internal": [
         "local",
-        "cheap"
+        "cheap",
+        "fable"
       ],
       "public": [
         "codex",
@@ -139,7 +157,8 @@
         "gemini",
         "grok",
         "cheap",
-        "local"
+        "local",
+        "fable"
       ]
     },
     "by_role": {
@@ -149,12 +168,14 @@
         "copilot",
         "gemini",
         "local",
-        "grok"
+        "grok",
+        "fable"
       ],
       "refactor": [
         "codex",
         "antigravity",
-        "copilot"
+        "copilot",
+        "fable"
       ],
       "assets": [
         "codex",
@@ -176,7 +197,8 @@
         "copilot",
         "codex",
         "gemini",
-        "grok"
+        "grok",
+        "fable"
       ],
       "chores": [
         "local",
@@ -232,5 +254,10 @@
     ],
     "cooldown_minutes": 60,
     "max_fallbacks": 1
+  },
+  "chair": {
+    "plan_assist": null,
+    "review_assist": null,
+    "coder": "executors"
   }
 }

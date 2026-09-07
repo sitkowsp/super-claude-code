@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc12-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc13-orange.svg">
 </p>
 
 ```
@@ -37,6 +37,7 @@ windows. `council` fixes that:
 - 🎮 **3D and gamedev.** Codex runs **GPT-6 Astra** by default (reasoning `medium`, context 256k, both configurable): texture sets, Blender `bpy` scripts run headless, Unreal C++/Python — all left in the task branch. `/council:doctor` shows whether Blender or Unreal are installed (Unreal is found on any local disk, e.g. `D:/GAMES/Unreal/UE_5.8`, or via `UE_ROOT`); without them executors still deliver scripts plus run instructions.
 - 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
 - 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
+- 🪑 **Chair options.** Let GPT-6 Astra draft the plan and summarise reviews for Claude (`/council:chair plan-assist codex`), or let Claude Fable 5.1 write the code at `medium` effort (`/council:chair coder fable`). Defaults stay as they are; see "Choose your chair setup".
 - 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
 
 ## What it looks like
@@ -48,7 +49,7 @@ windows. `council` fixes that:
    → T-003 implement → antigravity (index.html, styles.css)   depends_on: T-001, T-002
 /council:run          # three executors start in parallel, each in .council/work/<id>/
 /council:status       # board + new events; blocked? /council:answer T-002 "use the public registry"
-/council:review T-001 # gates + diff + flags → verdict; a rejection becomes ANSWER.md and re-dispatches
+/council:review T-001 # gates + diff + flags (+ assistant summary if enabled) → verdict; a rejection re-dispatches
 /council:merge        # rebase + merge --no-ff in id order, after-merge gates, MEMORY.md line
 ```
 
@@ -70,7 +71,7 @@ Claude   ── /council:review ── gates + diff → verdict ── /council:
 
 | Work | role | goes to |
 |---|---|---|
-| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok |
+| code, refactors | `implement`, `refactor` | Codex → Antigravity → Copilot → local → Grok (or **Fable 5.1 first** with `/council:chair coder fable`) |
 | logos, icons, illustrations, diagrams (**PNG via Codex or Antigravity**) | `assets` | Codex → Antigravity → Copilot |
 | textures, materials, Blender scripts, Unreal code (**GPT-6 Astra via Codex**) | `3d` | Codex → Antigravity |
 | documentation, copy | `docs` | Copilot → Antigravity → cheap Claude → local |
@@ -179,6 +180,45 @@ you open the clone itself as a project that entry shows as skipped — expected.
 
 Full walkthrough: [docs/getting-started.md](docs/getting-started.md). Recipes (bug-hunt with
 `/council:compare`, assets epics, end-of-session offload): [docs/recipes.md](docs/recipes.md).
+
+## Choose your chair setup (optional)
+
+Claude Code is always the chair: it decides, approves and merges. Two switches change how much of
+the chair's own work is offloaded and who writes code. **Defaults are unchanged**: Claude plans and
+reviews alone, Codex (GPT-6 Astra, `medium`) codes and draws, Copilot documents, Ollama reviews.
+
+| Switch | Values | What changes |
+|---|---|---|
+| `plan_assist` | `off` (default) / `codex` / any model | `/council:plan` first asks that model for a **draft** of the task cards (repo analysis, playbook, memory, vault notes go in; validated cards come out). Claude and you approve; nothing is saved by the assistant. Saves the most Claude tokens, because planning is where Claude reads the whole repo. |
+| `review_assist` | `off` (default) / `codex` / `local` / any model | `council_review` adds a 12-line summary from that model (`assistant_review`). Claude still reads gates, flags and diff-stat and gives the verdict. |
+| `coder` | `executors` (default) / `fable` | `fable` = **Claude Fable 5.1 via `claude -p --effort medium`** is put first for `implement`/`refactor`; graphics, 3D, docs, review keep their routing. Fallback for `fable` is the normal chain (Codex → …). |
+
+Set it per project, effective immediately, no restart:
+
+```
+/council:chair                      # show current setup
+/council:chair plan-assist codex    # Astra drafts plans for Claude
+/council:chair review-assist codex  # Astra summarises diffs for Claude
+/council:chair coder fable          # Claude Fable 5.1 (medium) writes code; codex remains the graphics/3D model
+/council:chair coder executors      # back to default
+```
+
+`/council:doctor` prints the active line, e.g. `chair: claude · plan_assist: codex · review_assist: off · coder: fable (claude-fable-5-1, effort medium)`.
+
+**How to run these commands.** In the **Claude Code desktop app** type the slash command in the chat
+box (`/council:chair coder fable`). In the **terminal**, the same slash commands work inside an
+interactive `claude` session; from a shell script use headless mode or the CLI:
+
+```bash
+claude -p "/council:chair coder fable"
+uv run --directory ~/.claude/plugins/cache/super-claude-code/council/<version> council setup --coder fable --plan-assist codex
+```
+
+Honest note: `coder: fable` spends **your Claude usage window** (every `claude -p` counts against
+the same 5-hour limit) — it saves your interactive session's context and lets several cards run in
+parallel, not your quota. The assistants save quota for real. Everything the assistants return is
+treated as untrusted data; the plugin's own hooks stay silent inside `claude -p` executors
+(`COUNCIL_EXECUTOR=1`).
 
 ## Saving Claude tokens — the point of all this
 

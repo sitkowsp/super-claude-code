@@ -9,6 +9,10 @@ Goal: $ARGUMENTS
 2. Call `council_context` (vault notes: plan, decisions, specs — cite them), `council_models` (available executors) and `council_playbooks(goal)` (which pattern fits and
    why; `--playbook <name>` in $ARGUMENTS forces one). Follow the selected playbook's waves as a
    pattern; Claude keeps what `claude_keeps` lists.
+2b. If `council_doctor`/`council_setup` shows `plan_assist` is on (not `off`), call
+   `council_plan(goal=$ARGUMENTS, draft=true)` first: the assistant model drafts the cards; the result
+   is validated (`errors`) but not saved. Fix or drop cards with errors, then continue with step 3 using
+   the draft as the starting point instead of designing from scratch.
 3. Design 1–4 task cards with **disjoint `scope`** (globs the executor may change), read-only
    `context_files`, a one-sentence `goal`, checkable `acceptance`, `role` and `privacy`.
    Rules: `privacy: internal` if scope/context touches config, secrets-adjacent or company-specific

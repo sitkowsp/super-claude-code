@@ -341,6 +341,46 @@ def detect_tools(refresh: bool = False) -> dict[str, str | None]:
     return out
 
 
+def chair_line(cfg: CouncilConfig) -> str:
+    c = cfg.chair
+    coder = c.coder
+    if coder != "executors" and coder in cfg.models:
+        m = cfg.models[coder]
+        coder += f" ({m.model or m.adapter}" + (f", effort {m.effort}" if m.effort else "") + ")"
+    return (
+        f"chair: claude · plan_assist: {c.plan_assist or 'off'} · "
+        f"review_assist: {c.review_assist or 'off'} · coder: {coder}"
+    )
+
+
+def set_chair(
+    root: Path,
+    coder: str | None = None,
+    plan_assist: str | None = None,
+    review_assist: str | None = None,
+) -> list[str]:
+    """Edit `.council/council.json` in place. 'off' clears an assistant; a coder other than
+    'executors' is also enabled as a model. Returns the fields changed. Validates the result."""
+    path = root / ".council" / "council.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    chair = data.setdefault("chair", {})
+    changed: list[str] = []
+    for key, val in (("plan_assist", plan_assist), ("review_assist", review_assist)):
+        if val is not None:
+            chair[key] = None if val in ("off", "none", "") else val
+            changed.append(key)
+    if coder is not None:
+        chair["coder"] = coder
+        changed.append("coder")
+        if coder != "executors" and coder in data.get("models", {}):
+            data["models"][coder]["enabled"] = True
+    from council_mcp.config import CouncilConfig as _Cfg
+
+    _Cfg.model_validate(data)  # raise before writing anything
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return changed
+
+
 def apply_probe(
     checks: list[Check],
     errors: dict[str, str | None],

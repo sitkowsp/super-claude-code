@@ -10,6 +10,7 @@ The Charter is `.council/CHARTER.md` if the target repo has one, else the packag
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
@@ -62,6 +63,16 @@ def cli_prompt(
     return _env.get_template("prompt_cli.j2").render(
         task=task, resume=resume, charter=inline_charter, tools=tools or {}
     )
+
+
+def plan_draft(**ctx: Any) -> str:
+    """Prompt for the chair's planning assistant (chair.plan_assist)."""
+    return _env.get_template("plan_draft.j2").render(**ctx)
+
+
+def review_assist(task: Task, diff: str, gates_ok: bool | None) -> str:
+    """Prompt for the chair's review assistant (chair.review_assist)."""
+    return _env.get_template("review_assist.j2").render(task=task, diff=diff, gates_ok=gates_ok)
 
 
 def write_all(

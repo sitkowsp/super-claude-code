@@ -161,10 +161,20 @@ def _budget_line(root: Path) -> str:
     return hint
 
 
+def _inside_executor() -> bool:
+    """True when this process is a `claude -p` executor started by council-mcp: hooks must not
+    touch the executor workdir (no init, no event brief)."""
+    import os
+
+    return bool(os.environ.get("COUNCIL_EXECUTOR"))
+
+
 def events(root: Path) -> str:
     """Brief of events newer than `.council/.last_seen_hook` (own marker, not council_status's)."""
     from council_mcp.store import TaskStore
 
+    if _inside_executor():
+        return ""
     c = root / ".council"
     budget = _budget_line(root) if (c / "council.json").exists() else ""
     if not (c / "events.jsonl").exists():
@@ -253,7 +263,20 @@ def report(root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-async def setup_cmd(root: Path, install: bool) -> int:
+async def setup_cmd(
+    root: Path,
+    install: bool,
+    coder: str | None = None,
+    plan_assist: str | None = None,
+    review_assist: str | None = None,
+) -> int:
+    if coder or plan_assist or review_assist:
+        changed = setup.set_chair(root, coder, plan_assist, review_assist)
+        print(
+            "chair: "
+            + setup.chair_line(load(root))
+            + (f"  (changed: {changed})" if changed else "")
+        )
     cfg = load(root)
     checks = await setup.check_all(cfg)
     print(setup.render(checks))
@@ -288,6 +311,8 @@ def session_start(root: Path, plugin_dir: Path) -> str:
     Cheap: no model calls, no probing beyond `which`. Output goes into Claude's context."""
     import asyncio as _asyncio
 
+    if _inside_executor():
+        return ""
     lines = []
     if not (root / ".council" / "council.json").exists():
         done = init(root, plugin_dir)
@@ -351,6 +376,9 @@ def main(argv: list[str] | None = None) -> None:
     p_set = sub.add_parser("setup", help="check executors; --install installs missing npm CLIs")
     p_set.add_argument("--root", type=Path, default=Path.cwd())
     p_set.add_argument("--install", action="store_true")
+    p_set.add_argument("--coder", help="'executors' (default) or a model name, e.g. fable")
+    p_set.add_argument("--plan-assist", help="model that drafts task cards for Claude, or 'off'")
+    p_set.add_argument("--review-assist", help="model that summarises diffs for Claude, or 'off'")
     p_ss = sub.add_parser("session-start", help="hook: init if needed + one-line status")
     p_ss.add_argument("--root", type=Path, default=Path.cwd())
     p_ob = sub.add_parser("obsidian", help="show vault detection or mirror council state into it")
@@ -376,7 +404,17 @@ def main(argv: list[str] | None = None) -> None:
         if brief:
             print(brief)
     elif args.cmd == "setup":
-        sys.exit(asyncio.run(setup_cmd(args.root.resolve(), args.install)))
+        sys.exit(
+            asyncio.run(
+                setup_cmd(
+                    args.root.resolve(),
+                    args.install,
+                    args.coder,
+                    args.plan_assist,
+                    args.review_assist,
+                )
+            )
+        )
     elif args.cmd == "session-start":
         out = session_start(args.root.resolve(), plugin_dir)
         if out:

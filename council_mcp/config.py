@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from council_mcp.obsidian import ObsidianConfig
 from council_mcp.policy import DelegationPolicy
@@ -64,6 +64,8 @@ class ModelConfig(BaseModel):
     # codex: `-c model_reasoning_effort=…` / `-c model_context_window=…` (GPT-6 Astra: low…max)
     reasoning: Reasoning | None = None
     context_window: int | None = None
+    # claude-sub: `--effort low|medium|high|xhigh|max` (Claude Code CLI)
+    effort: Reasoning | None = None
     # grok: only the CLI adapter exists (DESIGN.md 19.5 cut `pull`)
     mode: Literal["cli"] | None = None
 
@@ -93,6 +95,19 @@ class Routing(BaseModel):
     second_opinion: list[str] = Field(default_factory=list)
 
 
+class Chair(BaseModel):
+    """Who helps the chair (Claude Code) and who codes. Defaults keep the original setup: Claude
+    plans and reviews alone, executors code. `plan_assist`/`review_assist` name a model that drafts
+    task cards / summarises a diff for Claude (decisions stay with Claude). `coder` is
+    "executors" or a model name (e.g. `fable` = Claude via `claude -p --effort medium`) that is
+    put first for `implement`/`refactor`."""
+
+    model_config = ConfigDict(extra="forbid")
+    plan_assist: str | None = None
+    review_assist: str | None = None
+    coder: str = "executors"
+
+
 class CouncilConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Literal[1] = 1
@@ -109,6 +124,17 @@ class CouncilConfig(BaseModel):
     obsidian: ObsidianConfig = Field(default_factory=ObsidianConfig)
     fallback: Fallback = Field(default_factory=Fallback)
     delegation: DelegationPolicy = Field(default_factory=DelegationPolicy)
+    chair: Chair = Field(default_factory=Chair)
+
+    @model_validator(mode="after")
+    def _chair_refs(self) -> CouncilConfig:
+        for field in ("plan_assist", "review_assist"):
+            v = getattr(self.chair, field)
+            if v is not None and v not in self.models:
+                raise ValueError(f"chair.{field}='{v}' is not a configured model")
+        if self.chair.coder != "executors" and self.chair.coder not in self.models:
+            raise ValueError(f"chair.coder='{self.chair.coder}' is not a configured model")
+        return self
 
     @field_validator("models")
     @classmethod
@@ -121,11 +147,11 @@ class CouncilConfig(BaseModel):
     def candidates(self, role: Role, privacy: Privacy) -> list[str]:
         """Routing rule (§3.1): ordered by_role list filtered by by_privacy, enabled only."""
         allowed = set(self.routing.by_privacy.get(privacy, []))
-        return [
-            m
-            for m in self.routing.by_role.get(role, [])
-            if m in allowed and m in self.models and self.models[m].enabled
-        ]
+        order = list(self.routing.by_role.get(role, []))
+        coder = self.chair.coder
+        if coder != "executors" and role in ("implement", "refactor"):
+            order = [coder] + [m for m in order if m != coder]
+        return [m for m in order if m in allowed and m in self.models and self.models[m].enabled]
 
 
 CONFIG_PATH = Path(".council") / "council.json"

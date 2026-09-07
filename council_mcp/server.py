@@ -27,6 +27,7 @@ from council_mcp import (
     playbooks,
     policy,
     probe,
+    render,
     stats,
     vault,
 )
@@ -235,18 +236,11 @@ async def council_probe() -> dict[str, Any]:
 
 
 # ---- Phase 1 -------------------------------------------------------------------
-@_tool
-async def council_plan(tasks: list[dict[str, Any]]) -> dict[str, Any]:
-    """Validate and save task cards. Each card: title, role, privacy, goal, scope (globs the
-    executor may change), context_files (read-only), acceptance (checks), optional assigned_to,
-    depends_on (existing ids). Rejects overlapping scopes, never_share in scope, and roles/privacy
-    with no available model. Returns created ids. Nothing runs until council_dispatch."""
-    cfg = rt.cfg
-    await rt.caps()
-    store = rt.store
-    synced = vault.sync_decisions(cfg.obsidian, rt.root, cfg.memory_file)
-    if synced:
-        store.event("-", "planned", actor="claude", reason="memory_from_vault", decisions=synced)
+def _validate_cards(
+    cfg: CouncilConfig, store: TaskStore, tasks: list[dict[str, Any]]
+) -> tuple[list[Task], list[str]]:
+    """Shared by council_plan (save) and the plan draft (preview): ids, scope overlap,
+    never_share, depends_on, routing."""
     picker = Scheduler(cfg, store, GitRepo(rt.root), Watcher(store, GitRepo(rt.root)), rt.root)
     existing = [t for t in store.all() if t.state not in ("merged", "failed")]
     known_ids = {t.id for t in store.all()}
@@ -276,6 +270,110 @@ async def council_plan(tasks: list[dict[str, Any]]) -> dict[str, Any]:
         except ValueError as e:
             errors.append(str(e))
         created.append(t)
+    return created, errors
+
+
+def _extract_json_array(text: str) -> list[dict[str, Any]]:
+    """Executor output is untrusted text: take the first top-level JSON array, nothing else."""
+    import json as _json
+
+    start = text.find("[")
+    while start != -1:
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "[":
+                depth += 1
+            elif text[i] == "]":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        val = _json.loads(text[start : i + 1])
+                    except ValueError:
+                        break
+                    if isinstance(val, list) and all(isinstance(x, dict) for x in val):
+                        return val
+                    break
+        start = text.find("[", start + 1)
+    raise ToolError("plan draft: assistant returned no JSON array of cards")
+
+
+async def _plan_draft(goal: str, playbook: str | None) -> dict[str, Any]:
+    cfg = rt.cfg
+    model = cfg.chair.plan_assist
+    if not model:
+        raise ToolError(
+            "chair.plan_assist is off — enable with council_setup(plan_assist='codex') or "
+            "/council:chair plan-assist codex"
+        )
+    if model not in cfg.models or not cfg.models[model].enabled:
+        raise ToolError(f"plan_assist model '{model}' is not available")
+    store = rt.store
+    books = playbooks.load_all(rt.root)
+    pb, why = playbooks.select(goal, books, playbook)
+    a = analyze.scan(rt.root)
+    prompt = render.plan_draft(
+        goal=goal,
+        analysis=analyze.render(a, rt.root.name),
+        playbook=pb.model_dump(),
+        models={
+            n: {"roles": m.roles, "privacy": m.privacy} for n, m in cfg.models.items() if m.enabled
+        },
+        never_share=cfg.never_share,
+        memory=render.memory(rt.root, cfg.memory_file),
+        notes=vault.context_notes(cfg.obsidian, rt.root),
+        existing=[t.model_dump(include={"id", "title", "scope", "state"}) for t in store.all()],
+    )
+    os.chdir(rt.root)
+    res = await make(model, cfg.models[model]).ask(prompt, [])
+    cards = _extract_json_array(res.text)
+    for c in cards:
+        c.pop("id", None)  # ids are assigned here, never by the assistant
+        c.pop("assigned_to", None)
+    created, errors = _validate_cards(cfg, store, cards)
+    store.event(
+        "-",
+        "planned",
+        actor="claude",
+        model=model,
+        reason=f"plan_draft playbook={pb.name} cards={len(cards)} errors={len(errors)}",
+    )
+    return {
+        "draft": [t.model_dump(exclude={"last_report"}) for t in created],
+        "errors": errors,
+        "assistant": model,
+        "playbook": pb.name,
+        "playbook_reason": why,
+        "next": "Review the draft with the user, then call council_plan(tasks=draft) to save it.",
+    }
+
+
+@_tool
+async def council_plan(
+    tasks: list[dict[str, Any]] | None = None,
+    goal: str | None = None,
+    draft: bool = False,
+    playbook: str | None = None,
+) -> dict[str, Any]:
+    """Validate and save task cards. Each card: title, role, privacy, goal, scope (globs the
+    executor may change), context_files (read-only), acceptance (checks), optional assigned_to,
+    depends_on (existing ids). Rejects overlapping scopes, never_share in scope, and roles/privacy
+    with no available model. Returns created ids. Nothing runs until council_dispatch.
+    draft=true with a `goal`: the `chair.plan_assist` model (e.g. codex) drafts the cards from the
+    repo analysis, playbook, memory and vault notes; the result is validated but NOT saved — show
+    it to the user, then call council_plan(tasks=...) with the accepted cards."""
+    cfg = rt.cfg
+    await rt.caps()
+    if draft:
+        if not goal:
+            raise ToolError("draft=true needs a goal")
+        return await _plan_draft(goal, playbook)
+    if not tasks:
+        raise ToolError("tasks is empty (or use draft=true with a goal)")
+    store = rt.store
+    synced = vault.sync_decisions(cfg.obsidian, rt.root, cfg.memory_file)
+    if synced:
+        store.event("-", "planned", actor="claude", reason="memory_from_vault", decisions=synced)
+    created, errors = _validate_cards(cfg, store, tasks)
     if errors:
         raise ToolError("plan rejected:\n- " + "\n- ".join(errors))
     for t in created:
@@ -431,7 +529,22 @@ async def council_review(task: str) -> dict[str, Any]:
     for f in ("injection_suspect", "report_invalid"):
         if f in types:
             flags.append(f)
+    assistant: dict[str, Any] | None = None
+    ra = rt.cfg.chair.review_assist
+    if ra and ra != t.assigned_to and ra in rt.cfg.models and rt.cfg.models[ra].enabled:
+        prompt = render.review_assist(
+            task=t,
+            diff=diff[:MAX_DIFF_CHARS],
+            gates_ok=None if not gates_report else gates_report.ok,
+        )
+        try:
+            os.chdir(rt.root)
+            res = await make(ra, rt.cfg.models[ra]).ask(prompt, [])
+            assistant = {"model": ra, "text": res.text[:4000], "seconds": res.duration_s}
+        except Exception as e:  # noqa: BLE001 - assistant failure must not block review
+            assistant = {"model": ra, "error": str(e)[:300]}
     return {
+        "assistant_review": assistant,
         "task": t.model_dump(exclude={"last_report"}),
         "last_report": t.last_report.model_dump() if t.last_report else None,
         "flags": flags,
@@ -633,13 +746,27 @@ async def council_obsidian(mirror: bool = False, kit: bool = False) -> dict[str,
 
 
 @_tool
-async def council_setup(install: bool = False) -> dict[str, Any]:
+async def council_setup(
+    install: bool = False,
+    coder: str | None = None,
+    plan_assist: str | None = None,
+    review_assist: str | None = None,
+) -> dict[str, Any]:
     """Executor setup from inside Claude Code: table of installed / logged-in executors, the npm
     install commands for missing ones (run them when install=true), and the login command each
     model still needs (logins open a browser — the user runs them). No PATH-level `council`
-    binary is required."""
+    binary is required. Chair options (written to council.json): coder='fable' puts Claude
+    (`claude -p --effort medium`) first for implement/refactor, coder='executors' restores the
+    default; plan_assist / review_assist = model name (e.g. 'codex') or 'off'."""
     from council_mcp import setup
 
+    chair_changed: list[str] = []
+    if coder or plan_assist or review_assist:
+        try:
+            chair_changed = setup.set_chair(rt.root, coder, plan_assist, review_assist)
+        except ValueError as e:
+            raise ToolError(f"chair: {e}") from e
+        rt.reset()
     cfg = rt.cfg
     checks = await setup.check_all(cfg)
     commands = await setup.install_missing(cfg, dry_run=not install)
@@ -655,6 +782,8 @@ async def council_setup(install: bool = False) -> dict[str, Any]:
         rt.reset()
         checks = await setup.check_all(cfg)
     return {
+        "chair": setup.chair_line(cfg),
+        "chair_changed": chair_changed,
         "table": setup.render(checks),
         "install_commands": commands,
         "installed_now": install,
@@ -848,6 +977,7 @@ async def council_doctor() -> dict[str, Any]:
         },
         "obsidian": obsidian.status(cfg.obsidian, rt.root),
         "tools": setup.detect_tools(refresh=True),
+        "chair": setup.chair_line(cfg),
         "routing_gaps": gaps,
         "repo_root": str(rt.root),
     }

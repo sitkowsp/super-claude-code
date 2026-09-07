@@ -95,6 +95,19 @@ The reviewer runs your gates in the task worktree, reads the diff, and gives a v
 lesson. The integrator rebases, merges `--no-ff`, runs after-merge gates and writes a line to
 `MEMORY.md`. Branches `council/<id>` stay until you delete them.
 
+## 4b. Optional: who assists Claude, who codes
+
+```
+/council:chair                     # show
+/council:chair plan-assist codex   # GPT-6 Astra drafts the cards, you and Claude approve
+/council:chair coder fable         # Claude Fable 5.1 (effort medium) writes implement/refactor tasks
+/council:chair coder executors     # default again
+```
+
+Desktop app: type the slash command in the chat. Terminal: same command inside `claude`, or
+`claude -p "/council:chair coder fable"`, or `council setup --coder fable` from a clone / the plugin
+cache. `coder fable` uses your Claude usage window; the assistants save it.
+
 ## 5. End of session
 
 ```

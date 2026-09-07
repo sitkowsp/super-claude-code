@@ -115,6 +115,11 @@ async def test_quota_failure_falls_back_to_cheap_and_cools_down(
         if store.get("T-001").state == "review":
             break
         await asyncio.sleep(0.1)
+    # Wait for the fallback job (cheap) too: a job still running at test end left a git subprocess
+    # and a pending task for pytest-asyncio to tear down, which intermittently hung the whole
+    # suite on Windows (Proactor loop close).
+    if "T-001" in s.jobs and not s.jobs["T-001"].done():
+        await asyncio.wait_for(s.jobs["T-001"], 10)
     t = store.get("T-001")
     assert t.state == "review" and t.assigned_to == "cheap" and t.fallbacks == 1
     types = [e.type for e in store.events()]

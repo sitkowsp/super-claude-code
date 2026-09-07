@@ -16,9 +16,11 @@
       "privacy": ["public", "internal", "local-only"],   // what the model may see
       "url": "${COUNCIL_OLLAMA_URL}", "model": "qwen3:8b", "num_ctx": 16384,  // ollama
       "cmd": "codex", "model": "gpt-6-astra",                                  // CLIs
-      "reasoning": "medium", "context_window": 256000                           // codex only: -c model_reasoning_effort / model_context_window
+      "reasoning": "medium", "context_window": 256000,                          // codex only: -c model_reasoning_effort / model_context_window
+      "effort": "medium"                                                        // claude-sub only: claude -p --effort
     }
   },
+  "chair": {"plan_assist": null, "review_assist": null, "coder": "executors"},  // see "Chair options"
   "routing": {
     "by_privacy": {"local-only": ["local"], "internal": ["local", "cheap"], "public": ["codex", "..."]},
     "by_role":    {"implement": ["codex", "antigravity", "copilot", "local"], "...": []},
@@ -39,6 +41,19 @@ also in `by_privacy[P]`, is enabled, and passed the probe. No intersection = the
 `assigned_to` on a card overrides routing but still must respect privacy.
 
 Placeholders `${ENV_VAR}` are expanded at load time; never put secrets in the file.
+
+### Chair options
+
+`chair.plan_assist` / `chair.review_assist`: a model name or `null`. With `plan_assist` set,
+`council_plan(goal=…, draft=true)` asks that model for a JSON array of cards (prompt:
+`templates/plan_draft.j2`: goal, `council_analyze` output, selected playbook, MEMORY.md, vault notes,
+existing tasks, never_share) and returns them **validated but unsaved** (`draft`, `errors`); ids and
+`assigned_to` are always assigned by the server. With `review_assist` set, `council_review` adds
+`assistant_review` (`templates/review_assist.j2`, max 12 lines; failures are reported, never block).
+`chair.coder`: `"executors"` or a model name that `candidates()` puts first for `implement`/`refactor`
+only. The template ships `fable` (`claude-sub`, `claude-fable-5-1`, `effort: medium`, disabled);
+`council_setup(coder="fable")` enables it. Change with `/council:chair`, `council_setup(...)` or
+`council setup --coder … --plan-assist … --review-assist …`; `council_doctor` reports the `chair` line.
 
 ## Task card
 
@@ -84,12 +99,12 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_ask` | model, prompt, files? | one-shot question |
 | `council_compare` | prompt, models?, files? | same question to several models |
 | `council_playbooks` | goal?, playbook? | list playbooks, deterministic selection |
-| `council_plan` | tasks[] | validate + save cards |
+| `council_plan` | tasks[]? , goal?, draft?, playbook? | validate + save cards; `draft=true` + `goal`: the `chair.plan_assist` model drafts cards (validated, not saved) |
 | `council_dispatch` | ids? | start queued tasks |
 | `council_status` | task?, report? | board, new events, HANDOFF.md, task detail |
 | `council_answer` | task, text, remember? | answer blocked, resume |
 | `council_cancel` | task | kill, mark failed |
-| `council_review` | task | diff, flags, gates, trust, second-opinion requirement |
+| `council_review` | task | diff, flags, gates, trust, second-opinion requirement, `assistant_review` when `chair.review_assist` is set |
 | `council_verdict` | task, ok, reason, lesson? | review_ok / reject (+ANSWER.md, attempt+1) |
 | `council_merge` | ids?, force? | rebase + merge --no-ff, after-merge gates, MEMORY.md, cleanup |
 | `council_defect` | task, description, lesson? | post-merge defect: trust down, lesson |
@@ -103,7 +118,7 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_budget` | – | session minutes, offload hint |
 | `council_doctor` | – | environment check (same as `council doctor`) |
 | `council_ping` | – | no-config diagnostics (root, env, uv) |
-| `council_setup` | install? | executor table, npm install commands (run when install=true), logins needed |
+| `council_setup` | install?, coder?, plan_assist?, review_assist? | executor table, npm installs, logins needed; chair switches (`coder`=`executors`\|model, assistants = model or `off`) |
 
 ## CLI
 
@@ -115,7 +130,8 @@ and `events` for you).
 
 ```
 council init [--root DIR] [--force] [--obsidian]   bootstrap .council/ and .mcp.json (+ vault kit)
-council setup [--root DIR] [--install]            executor table; install missing npm CLIs
+council setup [--root DIR] [--install] [--coder M] [--plan-assist M|off] [--review-assist M|off]
+                                      executor table; install missing npm CLIs; chair switches
 council doctor [--root DIR]           probe models, validate routing
 council events [--root DIR]           brief of new events (used by the UserPromptSubmit hook)
 council report [--root DIR] [--out F]  one-page Markdown report: tasks, reviews, trust, time
@@ -128,7 +144,8 @@ council session-start [--root DIR]     what the SessionStart hook runs
 `/council:ask`, `/council:plan`, `/council:run`, `/council:status`, `/council:answer`,
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
 `/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`,
-`/council:setup`. Subagents: `council-planner`, `council-reviewer`,
+`/council:setup`, `/council:chair` (show / `coder fable|executors` / `plan-assist <model|off>` /
+`review-assist <model|off>`). Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables
@@ -138,3 +155,4 @@ council session-start [--root DIR]     what the SessionStart hook runs
 | `COUNCIL_REPO_ROOT` | target repo (set by `.mcp.json`) |
 | `COUNCIL_OLLAMA_URL` | Ollama base URL |
 | `COUNCIL_LOG_LEVEL` | server log level (stderr) |
+| `COUNCIL_EXECUTOR` | set to `1` by council-mcp for executor processes; the plugin's hooks exit silently when they see it (a `claude -p` executor must not init `.council/` in its workdir) |
