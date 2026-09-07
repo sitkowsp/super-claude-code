@@ -113,11 +113,12 @@ FROM "Council" WHERE council_task GROUP BY model
 ```
 ```
 
-*All tasks* is a DataviewJS block (Dataview → *Enable JavaScript queries*): it pages 10 tasks at a
-time with ‹ › buttons and shortens titles so the table does not wrap. The plain-DQL alternative is
+*All tasks*, *Recently merged*, *In progress* and *Failed* are DataviewJS blocks (Dataview →
+*Enable JavaScript queries*): each pages 10 rows at a time with ‹ › buttons and shortens titles so the table does not wrap. The plain-DQL alternative is
 `TABLE … FROM "Council" WHERE council_task SORT created desc LIMIT 10`. The full dashboard shipped
-with this repo's own vault also has *In progress*, *Failed*, *In review*
-and *Recently merged* sections — same pattern, different `state` filter. Every task note carries
+with this repo's own vault uses the same paged block for *Recently merged*, *In progress* and
+*Failed* (change the `where` filter, sort key and columns); *blocked* and *In review* stay unpaged
+DQL on purpose — they demand action and should be short. Every task note carries
 `council_task`, `title`, `state`, `role`, `model`, `attempt`, `created`, `finished` in its frontmatter,
 and the project name is the folder (`split(file.folder, "/")[1]`), so any Dataview query over
 `"Council"` sees tasks delegated to every model across all projects.
