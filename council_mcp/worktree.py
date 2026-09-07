@@ -226,6 +226,17 @@ class GitRepo:
             await self.git("commit", "-q", "-m", message)
             return (await self.git("rev-parse", "--short", "HEAD")).strip()
 
+    async def branch_stat(self, task_id: str) -> str:
+        """`git diff --stat` of everything branch council/<id> changed since it forked off base.
+        Read-only; empty string when the branch is missing or has no changes."""
+        branch = f"council/{task_id}"
+        async with self.lock:
+            base = await self.base_branch()
+            if not (await self.git("rev-parse", "--verify", "-q", branch, check=False)).strip():
+                return ""
+            mb = (await self.git("merge-base", base, branch)).strip()
+            return await self.git("diff", "--stat", f"{mb}..{branch}")
+
     async def landed_out_of_band(self, task_id: str) -> tuple[bool, str]:
         """True when everything branch council/<id> changed is byte-identical on the base branch —
         i.e. the chair merged the content by hand. Read-only (safe next to a live server)."""

@@ -73,6 +73,12 @@ async def test_reconcile_closes_hand_merged_and_skips_divergent(
     assert store.get("T-002").state == "review"
     ev = [e for e in store.events() if e.type == "merged" and e.task == "T-001"][0]
     assert ev.data.get("reconciled") is True
+    assert ev.data.get("lines") == 2 and ev.data.get("tokens_saved_est") == 880  # docs 800+40*2
+    from council_mcp import stats
+
+    st = stats.load(repo)
+    assert st.models["copilot"].merged == 1 and st.models["copilot"].tokens_saved_est == 880
+    assert "T-001" in st.counted_tasks
     # idempotent: nothing left to reconcile for T-001
     res2 = await sched.reconcile(["T-001"])
     assert res2["reconciled"] == [] and "state merged" in res2["skipped"][0]["reason"]

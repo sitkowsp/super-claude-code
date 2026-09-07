@@ -109,7 +109,7 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_cancel` | task | kill, mark failed |
 | `council_review` | task | diff, flags, gates, trust, second-opinion requirement, `assistant_review` when `chair.review_assist` is set |
 | `council_verdict` | task, ok, reason, lesson? | review_ok / reject (+ANSWER.md, attempt+1) |
-| `council_merge` | ids?, force?, reconcile? | rebase + merge --no-ff, after-merge gates, MEMORY.md, cleanup; `reconcile=true` closes review tasks already merged by hand (content byte-identical on base) |
+| `council_merge` | ids?, force?, reconcile? | rebase + merge --no-ff, after-merge gates, MEMORY.md, cleanup; `reconcile=true` closes review tasks already merged by hand (content byte-identical on base; counts merged + savings from the branch diff) |
 | `council_defect` | task, description, lesson? | post-merge defect: trust down, lesson |
 | `council_stats` | – | trust table, counters, LESSONS tail, `savings` (estimate) |
 | `council_accounts` | add?, verify?, remove? | Claude profiles for `claude -p` executors: table (logged in, account/org, models, cooldown), login command for a new profile, enable models of logged-in profiles, fallback chains, chair switch recipe, policy note |
@@ -140,6 +140,7 @@ council setup [--root DIR] [--install] [--coder M] [--plan-assist M|off] [--revi
 council doctor [--root DIR]           probe models, validate routing
 council events [--root DIR]           brief of new events (used by the UserPromptSubmit hook)
 council reconcile [--root DIR] [IDS...]  close review tasks already merged by hand (one-shot, no server)
+council savings [--root DIR] [--backfill]  savings summary; backfill counts older merges/reconciles
 council report [--root DIR] [--out F]  one-page Markdown report: tasks, reviews, trust, time
 council obsidian [--root DIR] [--mirror] vault status / mirror
 council session-start [--root DIR]     what the SessionStart hook runs

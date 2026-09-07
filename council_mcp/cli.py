@@ -303,6 +303,45 @@ async def setup_cmd(
     return 0
 
 
+async def savings_cmd(root: Path, backfill: bool) -> int:
+    """Print the savings summary; --backfill counts merged/reconciled tasks recorded before the
+    estimate existed (one-shot, no server)."""
+    from council_mcp import stats as st_mod
+    from council_mcp.store import TaskStore
+    from council_mcp.worktree import GitRepo
+
+    st = st_mod.load(root)
+    if backfill:
+        store = TaskStore(root)
+        git = GitRepo(root)
+        cfg = load(root)
+        for e in store.events():
+            if e.type != "merged" or e.task in st.counted_tasks:
+                continue
+            rec = bool(e.data and e.data.get("reconciled"))
+            commit = str(e.data.get("commit", "")) if e.data else ""
+            if not commit and not rec:
+                continue
+            try:
+                t = store.get(e.task)
+                if rec:
+                    stat = await git.branch_stat(e.task)
+                else:
+                    async with git.lock:
+                        stat = await git.git("diff", "--stat", f"{commit}^1", commit)
+            except Exception:  # noqa: BLE001 - old commit gone or task unknown: skip
+                continue
+            lines = st_mod.diff_lines(stat)
+            saved = st_mod.on_merge(
+                st, e.task, t.assigned_to or "-", t.role, lines, cfg.trust.initial
+            )
+            print(f"backfilled {e.task}: {lines} lines, ~{saved} tokens")
+        st_mod.save(root, st)
+        obsidian.mirror(root, cfg.obsidian)
+    print(st_mod.savings_md(st))
+    return 0
+
+
 async def reconcile_cmd(root: Path, ids: list[str]) -> int:
     """One-shot reconcile without the MCP server — safe to run next to a live session (read-only
     git + task-state writes). Clears review tasks whose content already landed on base by hand."""
@@ -422,6 +461,11 @@ def main(argv: list[str] | None = None) -> None:
     p_ob = sub.add_parser("obsidian", help="show vault detection or mirror council state into it")
     p_ob.add_argument("--root", type=Path, default=Path.cwd())
     p_ob.add_argument("--mirror", action="store_true")
+    p_sav = sub.add_parser(
+        "savings", help="estimated Claude tokens saved; --backfill counts old merges"
+    )
+    p_sav.add_argument("--root", type=Path, default=Path.cwd())
+    p_sav.add_argument("--backfill", action="store_true")
     p_rec = sub.add_parser(
         "reconcile", help="close review tasks whose content already landed on base by hand"
     )
@@ -446,6 +490,8 @@ def main(argv: list[str] | None = None) -> None:
         brief = events(args.root.resolve())
         if brief:
             print(brief)
+    elif args.cmd == "savings":
+        sys.exit(asyncio.run(savings_cmd(args.root.resolve(), args.backfill)))
     elif args.cmd == "reconcile":
         sys.exit(asyncio.run(reconcile_cmd(args.root.resolve(), args.ids)))
     elif args.cmd == "setup":

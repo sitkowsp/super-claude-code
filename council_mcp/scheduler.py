@@ -337,7 +337,16 @@ class Scheduler:
             base = await self.git.base_branch()
             async with self.git.lock:
                 head = (await self.git.git("rev-parse", "--short", base)).strip()
+            lines = stats.diff_lines(await self.git.branch_stat(tid))
             self.store.transition(task, "merged", reason=f"reconciled: {why}")
+            saved = 0
+            if task.assigned_to:
+                st = stats.load(self.root)
+                st.get(task.assigned_to, self.cfg.trust.initial).merged += 1
+                saved = stats.on_merge(
+                    st, tid, task.assigned_to, task.role, lines, self.cfg.trust.initial
+                )
+                stats.save(self.root, st)
             self.store.event(
                 tid,
                 "merged",
@@ -346,6 +355,8 @@ class Scheduler:
                 commit=head,
                 reconciled=True,
                 reason=why,
+                lines=lines,
+                tokens_saved_est=saved,
             )
             try:
                 await self.git.remove(tid, keep_branch=True)

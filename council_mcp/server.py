@@ -935,12 +935,15 @@ async def council_savings(backfill: bool = False) -> dict[str, Any]:
             if e.type != "merged" or e.task in st.counted_tasks:
                 continue
             commit = str(e.data.get("commit", "")) if e.data else ""
-            if not commit:
+            if not commit and not (e.data and e.data.get("reconciled")):
                 continue
             try:
                 t = store.get(e.task)
-                async with sched.git.lock:
-                    stat = await sched.git.git("diff", "--stat", f"{commit}^1", commit)
+                if e.data and e.data.get("reconciled"):
+                    stat = await sched.git.branch_stat(e.task)
+                else:
+                    async with sched.git.lock:
+                        stat = await sched.git.git("diff", "--stat", f"{commit}^1", commit)
             except Exception:  # noqa: BLE001 - old commit gone or task unknown: skip
                 continue
             lines_changed = stats.diff_lines(stat)
