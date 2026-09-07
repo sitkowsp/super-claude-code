@@ -51,9 +51,37 @@ TABLE repo FROM "Council" WHERE council_project SORT file.name
 TABLE title, model, attempt FROM "Council" WHERE council_task AND state = "blocked"
 ```
 ## All tasks (every model, every project)
-```dataview
-TABLE WITHOUT ID link(file.link, council_task) AS task, split(file.folder, "/")[1] AS project, title, state, role, model, attempt
-FROM "Council" WHERE council_task SORT created desc
+```dataviewjs
+// Paged table: 10 newest tasks per page, ‹ › buttons. Needs the Dataview plugin (JS queries enabled).
+const PAGE = 10;
+const rows = dv.pages('"Council"').where(p => p.council_task)
+  .sort(p => p.created, "desc").array();
+const short = (s, n) => (s ?? "").toString().length > n ? s.toString().slice(0, n - 1) + "…" : (s ?? "");
+const day = (d) => d ? d.toString().slice(0, 10) : "";
+const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+let page = 0;
+const box = dv.el("div", "");
+const render = () => {
+  box.empty();
+  const slice = rows.slice(page * PAGE, page * PAGE + PAGE);
+  const nav = box.createEl("div", { cls: "council-nav" });
+  const prev = nav.createEl("button", { text: "‹" }); prev.disabled = page === 0;
+  nav.createEl("span", { text: ` ${page + 1} / ${pages} · ${rows.length} tasks ` });
+  const next = nav.createEl("button", { text: "›" }); next.disabled = page >= pages - 1;
+  prev.onclick = () => { page--; render(); };
+  next.onclick = () => { page++; render(); };
+  dv.table(
+    ["task", "project", "title", "state", "model", "created"],
+    slice.map(p => [
+      dv.fileLink(p.file.path, false, p.council_task),
+      p.file.folder.split("/")[1],
+      short(p.title, 48),
+      p.state, p.model, day(p.created),
+    ]),
+    box,
+  );
+};
+render();
 ```
 ## Estimated Claude tokens saved
 ```dataview
@@ -73,7 +101,10 @@ FROM "Council" WHERE council_task GROUP BY model
 ```
 ```
 
-The full dashboard shipped with this repo's own vault also has *In progress*, *Failed*, *In review*
+*All tasks* is a DataviewJS block (Dataview → *Enable JavaScript queries*): it pages 10 tasks at a
+time with ‹ › buttons and shortens titles so the table does not wrap. The plain-DQL alternative is
+`TABLE … FROM "Council" WHERE council_task SORT created desc LIMIT 10`. The full dashboard shipped
+with this repo's own vault also has *In progress*, *Failed*, *In review*
 and *Recently merged* sections — same pattern, different `state` filter. Every task note carries
 `council_task`, `title`, `state`, `role`, `model`, `attempt`, `created`, `finished` in its frontmatter,
 and the project name is the folder (`split(file.folder, "/")[1]`), so any Dataview query over
