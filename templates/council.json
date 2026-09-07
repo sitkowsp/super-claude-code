@@ -253,11 +253,15 @@
       "unavailable"
     ],
     "cooldown_minutes": 60,
-    "max_fallbacks": 1
+    "max_fallbacks": 1,
+    "by_model": {}
   },
   "chair": {
     "plan_assist": null,
     "review_assist": null,
     "coder": "executors"
+  },
+  "claude_profiles": {
+    "default": null
   }
 }

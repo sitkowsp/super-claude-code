@@ -14,7 +14,9 @@ import re
 import shutil
 import sys
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 from pydantic import BaseModel
@@ -143,6 +145,217 @@ async def login_state(adapter: str, cmd_path: str | None) -> bool | None:
     return None
 
 
+def profile_logged_in(config_dir: str | None) -> bool | None:
+    """Cheap login check for a Claude profile: the credentials file in its CLAUDE_CONFIG_DIR.
+    None for the default profile (Claude Code itself is logged in if we are running)."""
+    if not config_dir:
+        return None
+    return (Path(config_dir) / ".credentials.json").exists()
+
+
+PROFILES_DIR = Path.home() / ".claude-profiles"
+
+
+def login_command(config_dir: str) -> str:
+    d = str(config_dir).replace("/", os.sep)
+    if os.name == "nt":
+        return f'$env:CLAUDE_CONFIG_DIR="{d}"; claude auth login   # PowerShell; pick the org'
+    return f'CLAUDE_CONFIG_DIR="{d}" claude auth login   # pick the org in the browser'
+
+
+async def profiles_status(cfg: CouncilConfig, root: Path) -> list[dict[str, Any]]:
+    """One row per Claude profile: dir, logged in, email/org (from `claude auth status --json`
+    when available), the models using it, and whether those models are on cooldown."""
+    from council_mcp import stats as _stats
+
+    st = _stats.load(root)
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    claude = _which("claude")
+    rows: list[dict[str, Any]] = []
+    for name, d in cfg.claude_profiles.items():
+        config_dir = str(Path(os.path.expanduser(d))) if d else None
+        models = [
+            n
+            for n, m in cfg.models.items()
+            if m.adapter == "claude-sub" and (m.profile or "default") == name
+        ]
+        logged: bool | None = profile_logged_in(config_dir) if config_dir else None
+        email = org = ""
+        if claude and (logged or config_dir is None):
+            env = {**os.environ, **({"CLAUDE_CONFIG_DIR": config_dir} if config_dir else {})}
+            code, out = await _run_env([claude, "auth", "status"], env)
+            try:
+                data = json.loads(out[out.index("{") :]) if "{" in out else {}
+            except ValueError:
+                data = {}
+            if isinstance(data, dict) and data:
+                logged = bool(data.get("loggedIn", logged))
+                email = str(data.get("email") or "")
+                org = str(data.get("orgName") or "")
+        cool = [m for m in models if _stats.in_cooldown(st.get(m), now)]
+        action = ""
+        if config_dir and not logged:
+            action = "log in: " + login_command(config_dir)
+        rows.append(
+            {
+                "profile": name,
+                "config_dir": config_dir or "(default Claude Code login)",
+                "logged_in": logged,
+                "email": email,
+                "org": org,
+                "models": models,
+                "enabled": [m for m in models if cfg.models[m].enabled],
+                "on_cooldown": cool,
+                "action": action,
+            }
+        )
+    return rows
+
+
+async def _run_env(argv: list[str], env: dict[str, str], timeout: float = 20) -> tuple[int, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *argv, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=env
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout)
+        return proc.returncode or 0, out.decode(errors="replace")
+    except Exception as e:  # noqa: BLE001
+        return 1, str(e)
+
+
+def render_profiles(rows: list[dict[str, Any]]) -> str:
+    out = [
+        "| profile | logged in | account | models (enabled) | cooldown | action |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        li = r["logged_in"]
+        acct = " / ".join(x for x in (str(r["email"]), str(r["org"])) if x) or "-"
+        models = ", ".join(str(m) for m in r["models"]) or "-"
+        enabled = ", ".join(str(m) for m in r["enabled"]) or "-"
+        cool = ", ".join(str(m) for m in r["on_cooldown"]) or "-"
+        out.append(
+            f"| {r['profile']} | {'yes' if li else ('?' if li is None else 'NO')} | {acct} | "
+            f"{models} ({enabled}) | {cool} | {r['action']} |"
+        )
+    return "\n".join(out)
+
+
+def add_profile(root: Path, name: str) -> dict[str, str]:
+    """Register a Claude profile in council.json (dir under ~/.claude-profiles/<name>), create the
+    dir, and return the login command for the user. Also creates `<model>-<name>` copies of every
+    claude-sub model on the default profile (disabled until the profile is logged in) and puts
+    them first in that model's fallback chain."""
+    import re as _re
+
+    if not _re.fullmatch(r"[a-z][a-z0-9-]{0,30}", name) or name == "default":
+        raise ValueError("profile name: lowercase slug, not 'default'")
+    path = root / ".council" / "council.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    profiles = data.setdefault("claude_profiles", {"default": None})
+    d = str(PROFILES_DIR / name)
+    profiles[name] = d
+    models = data.setdefault("models", {})
+    fb = data.setdefault("fallback", {}).setdefault("by_model", {})
+    created: list[str] = []
+    for mname, m in list(models.items()):
+        if m.get("adapter") != "claude-sub" or m.get("profile"):
+            continue
+        alt = f"{mname}-{name}"
+        if alt not in models:
+            models[alt] = {**m, "profile": name, "enabled": False}
+            created.append(alt)
+        chain = fb.setdefault(mname, [])
+        if alt not in chain:
+            chain.insert(0, alt)
+        back = fb.setdefault(alt, [])
+        if mname not in back:
+            back.insert(0, mname)
+        for lst in data.get("routing", {}).get("by_privacy", {}).values():
+            if mname in lst and alt not in lst:
+                lst.append(alt)
+        for lst in data.get("routing", {}).get("by_role", {}).values():
+            if mname in lst and alt not in lst:
+                lst.append(alt)
+    from council_mcp.config import CouncilConfig as _Cfg
+
+    _Cfg.model_validate(data)
+    Path(d).mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {
+        "profile": name,
+        "config_dir": d,
+        "login": login_command(d),
+        "models": ", ".join(created),
+    }
+
+
+def remove_profile(root: Path, name: str) -> list[str]:
+    """Drop a profile and the models bound to it (config only; the login dir is left alone)."""
+    path = root / ".council" / "council.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.get("claude_profiles", {}).pop(name, None)
+    gone = [n for n, m in data.get("models", {}).items() if m.get("profile") == name]
+    for n in gone:
+        data["models"].pop(n)
+        for lst in data.get("routing", {}).get("by_privacy", {}).values():
+            if n in lst:
+                lst.remove(n)
+        for lst in data.get("routing", {}).get("by_role", {}).values():
+            if n in lst:
+                lst.remove(n)
+    fb = data.get("fallback", {}).get("by_model", {})
+    for k in list(fb):
+        fb[k] = [t for t in fb[k] if t not in gone]
+        if k in gone or not fb[k]:
+            fb.pop(k)
+    from council_mcp.config import CouncilConfig as _Cfg
+
+    _Cfg.model_validate(data)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return gone
+
+
+def enable_logged_in_profiles(root: Path, rows: list[dict[str, Any]]) -> list[str]:
+    """Enable every model of a logged-in profile; disable models of profiles that are not."""
+    path = root / ".council" / "council.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    enabled: list[str] = []
+    for r in rows:
+        if r["profile"] == "default":
+            continue
+        for m in r["models"]:
+            if str(m) in data.get("models", {}):
+                data["models"][str(m)]["enabled"] = bool(r["logged_in"])
+                if r["logged_in"]:
+                    enabled.append(str(m))
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return enabled
+
+
+def switch_hint(cfg: CouncilConfig, rows: list[dict[str, Any]]) -> str:
+    """What the user can do when the chair's own window ends. Executors fail over on their own;
+    the interactive session cannot switch accounts, so this is the manual recipe."""
+    alts = [r for r in rows if r["profile"] != "default"]
+    if not alts:
+        return (
+            "No alternate Claude profile configured. Executors fall back to other providers; the "
+            "chair session waits for the window to reset. /council:accounts add <name> registers "
+            "a second account for claude -p executors."
+        )
+    ready = [str(r["profile"]) for r in alts if r["logged_in"]]
+    lines = [
+        "Claude executors (fable/cheap) switch profile automatically on a usage-limit error "
+        f"(fallback chains). Logged-in alternate profiles: {', '.join(ready) or 'none'}.",
+        "The chair (this Claude Code session) cannot change account mid-session. To continue on "
+        "another account: 1) /council:handoff, 2) close the app, 3) run "
+        f"`claude auth login` and pick the other org (or start a terminal session with "
+        f"CLAUDE_CONFIG_DIR={alts[0]['config_dir']}), 4) reopen the project — council_status "
+        "returns the handoff.",
+    ]
+    return "\n".join(lines)
+
+
 async def check_all(cfg: CouncilConfig) -> list[Check]:
     out: list[Check] = []
     for name, m in cfg.models.items():
@@ -164,9 +377,13 @@ async def check_all(cfg: CouncilConfig) -> list[Check]:
         cmd = m.cmd or (ex.cmd if ex else None)
         path = _which(cmd) if cmd else None
         logged = await login_state(m.adapter, path) if path else None
+        if m.adapter == "claude-sub" and m.config_dir:
+            logged = profile_logged_in(m.config_dir)
         action = ""
         if not path and ex:
             action = f"install: {ex.install}"
+        elif logged is False and m.adapter == "claude-sub" and m.config_dir:
+            action = "log in: " + login_command(m.config_dir)
         elif logged is False and ex:
             action = f"log in: {ex.login}"
         out.append(

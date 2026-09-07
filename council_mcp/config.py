@@ -66,6 +66,10 @@ class ModelConfig(BaseModel):
     context_window: int | None = None
     # claude-sub: `--effort low|medium|high|xhigh|max` (Claude Code CLI)
     effort: Reasoning | None = None
+    # claude-sub: which Claude account this executor runs under — a key of `claude_profiles`.
+    # None = the default Claude Code login. `config_dir` is derived (CLAUDE_CONFIG_DIR).
+    profile: str | None = None
+    config_dir: str | None = None
     # grok: only the CLI adapter exists (DESIGN.md 19.5 cut `pull`)
     mode: Literal["cli"] | None = None
 
@@ -86,6 +90,16 @@ class Fallback(BaseModel):
     )
     cooldown_minutes: int = 60
     max_fallbacks: int = 1  # per task
+    # Per-model chains tried before `model`, e.g. {"fable": ["fable-alt", "codex"]} — a Claude
+    # executor out of quota moves to the same executor on the other account first.
+    by_model: dict[str, list[str]] = Field(default_factory=dict)
+
+    def targets(self, model: str) -> list[str]:
+        out: list[str] = []
+        for t in [*self.by_model.get(model, []), *([self.model] if self.model else [])]:
+            if t and t != model and t not in out:
+                out.append(t)
+        return out
 
 
 class Routing(BaseModel):
@@ -125,6 +139,28 @@ class CouncilConfig(BaseModel):
     fallback: Fallback = Field(default_factory=Fallback)
     delegation: DelegationPolicy = Field(default_factory=DelegationPolicy)
     chair: Chair = Field(default_factory=Chair)
+    # Claude accounts for `claude-sub` executors: name -> CLAUDE_CONFIG_DIR (None = default login).
+    # Each extra profile is logged in once by the user (`claude auth login` with that dir).
+    claude_profiles: dict[str, str | None] = Field(
+        default_factory=lambda: {"default": None}  # type: ignore[arg-type]
+    )
+
+    @model_validator(mode="after")
+    def _profiles(self) -> CouncilConfig:
+        import os
+
+        for name, m in self.models.items():
+            if m.profile is None:
+                continue
+            if m.profile not in self.claude_profiles:
+                raise ValueError(f"model '{name}': profile '{m.profile}' not in claude_profiles")
+            d = self.claude_profiles[m.profile]
+            m.config_dir = str(Path(os.path.expanduser(d))) if d else None
+        for name, chain in self.fallback.by_model.items():
+            for t in chain:
+                if t not in self.models:
+                    raise ValueError(f"fallback.by_model['{name}'] names unknown model '{t}'")
+        return self
 
     @model_validator(mode="after")
     def _chair_refs(self) -> CouncilConfig:

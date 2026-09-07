@@ -215,8 +215,9 @@ async def council_ask(model: str, prompt: str, files: list[str] | None = None) -
             res = await make(model, cfg.models[model]).ask(prompt, paths)
             return res.model_dump()
         except Exception as e:  # noqa: BLE001
-            fb = cfg.fallback.model
-            if not fb or fb == model or fb not in cfg.models or not cfg.models[fb].enabled:
+            sched_fb = await rt.sched()
+            fb = sched_fb.pick_fallback(model, "public")
+            if not fb:
                 raise ToolError(f"{model} failed: {str(e)[:300]}") from e
             log.warning("ask_fallback", model=model, fallback=fb, error=str(e)[:200])
             res = await make(fb, cfg.models[fb]).ask(prompt, paths)
@@ -849,6 +850,55 @@ async def council_stats() -> dict[str, Any]:
 
 
 @_tool
+async def council_accounts(
+    add: str | None = None, verify: bool = False, remove: str | None = None
+) -> dict[str, Any]:
+    """Claude accounts for `claude -p` executors (fable/cheap). Each profile is a separate
+    CLAUDE_CONFIG_DIR with its own login; when one account hits its usage limit the fallback chain
+    moves the task to the same executor on the next profile (fallback.by_model). add=<name>
+    registers a profile and returns the login command the user must run (browser; council never
+    handles credentials). verify=true re-reads `claude auth status` per profile and enables the
+    models of profiles that are logged in. The interactive chair session cannot switch accounts —
+    see `switch_hint`. Using several accounts to work around usage limits may be against
+    Anthropic's usage policy: the user and their org admin decide, the plugin only provides the
+    mechanism."""
+    from council_mcp import setup
+
+    cfg = rt.cfg
+    result: dict[str, Any] = {}
+    if add:
+        try:
+            result["added"] = setup.add_profile(rt.root, add)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
+        rt.reset()
+        cfg = rt.cfg
+    if remove:
+        result["removed"] = setup.remove_profile(rt.root, remove)
+        rt.reset()
+        cfg = rt.cfg
+    profiles = await setup.profiles_status(cfg, rt.root)
+    if verify:
+        result["enabled_models"] = setup.enable_logged_in_profiles(rt.root, profiles)
+        rt.reset()
+        cfg = rt.cfg
+        profiles = await setup.profiles_status(cfg, rt.root)
+    result.update(
+        {
+            "profiles": profiles,
+            "table": setup.render_profiles(profiles),
+            "fallback_chains": cfg.fallback.by_model,
+            "switch_hint": setup.switch_hint(cfg, profiles),
+            "policy_note": (
+                "Several Claude accounts used to bypass usage limits may violate Anthropic's usage "
+                "policy; Team seats in different orgs each have their own allowance. Your call."
+            ),
+        }
+    )
+    return result
+
+
+@_tool
 async def council_savings(backfill: bool = False) -> dict[str, Any]:
     """Estimated Claude tokens saved by delegating (heuristic, documented in `method`) plus a
     summary per model and for the assistants. backfill=true also counts tasks merged before this
@@ -1032,6 +1082,7 @@ async def council_doctor() -> dict[str, Any]:
         "obsidian": obsidian.status(cfg.obsidian, rt.root),
         "tools": setup.detect_tools(refresh=True),
         "chair": setup.chair_line(cfg),
+        "claude_profiles": await setup.profiles_status(cfg, rt.root),
         "routing_gaps": gaps,
         "repo_root": str(rt.root),
     }
@@ -1064,6 +1115,9 @@ async def council_budget() -> dict[str, Any]:
     minutes = policy.session_minutes(rt.root)
     hint = policy.budget_hint(rt.cfg.delegation, minutes)
     ready = [n for n, m in rt.cfg.models.items() if m.enabled]
+    from council_mcp import setup
+
+    profiles = await setup.profiles_status(rt.cfg, rt.root)
     return {
         "session_minutes": minutes,
         "window_minutes": rt.cfg.delegation.session_budget_minutes,
@@ -1071,6 +1125,7 @@ async def council_budget() -> dict[str, Any]:
         "hint": hint,
         "executors_ready": ready,
         "policy": rt.cfg.delegation.model_dump(),
+        "switch_hint": setup.switch_hint(rt.cfg, profiles),
     }
 
 

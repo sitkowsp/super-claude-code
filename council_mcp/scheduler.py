@@ -33,6 +33,39 @@ UNAVAILABLE_RE = re.compile(
 )
 
 
+RESET_RE = re.compile(
+    r"reset(?:s|ting)?\s+in\s+(?P<mins>\d+)\s*min"
+    r"|reset(?:s|ting)?\s+in\s+(?P<hrs>\d+)\s*h"
+    r"|reset(?:s|ting)?\s+(?:at\s+)?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?\s*(?P<ap>am|pm)?",
+    re.I,
+)
+
+
+def parse_reset(text: str, now: datetime) -> datetime | None:
+    """When a quota message says when the limit resets ("resets 3pm", "resets at 14:30",
+    "resets in 45 min"), return that moment (local time of `now`); else None."""
+    m = RESET_RE.search(text or "")
+    if not m:
+        return None
+    if m.group("mins"):
+        return now + timedelta(minutes=int(m.group("mins")))
+    if m.group("hrs"):
+        return now + timedelta(hours=int(m.group("hrs")))
+    h = int(m.group("h"))
+    mins = int(m.group("m") or 0)
+    ap = (m.group("ap") or "").lower()
+    if ap == "pm" and h < 12:
+        h += 12
+    if ap == "am" and h == 12:
+        h = 0
+    if h > 23 or mins > 59:
+        return None
+    t = now.replace(hour=h, minute=mins, second=0, microsecond=0)
+    if t <= now:
+        t += timedelta(days=1)
+    return t
+
+
 def classify_failure(exit_code: int | None, error: str | None, log_tail: str) -> str | None:
     """quota | no_response | unavailable | None (a real task failure: keep it failed)."""
     text = f"{error or ''}\n{log_tail}"
@@ -222,7 +255,13 @@ class Scheduler:
             return False
         st = stats.load(self.root)
         m = st.get(handle.model, self.cfg.trust.initial)
-        until = datetime.now(UTC) + timedelta(minutes=fb.cooldown_minutes)
+        now_local = datetime.now().astimezone()
+        reset = parse_reset(self._log_tail(handle), now_local) if kind == "quota" else None
+        until = (
+            reset.astimezone(UTC)
+            if reset
+            else datetime.now(UTC) + timedelta(minutes=fb.cooldown_minutes)
+        )
         m.cooldown_until = until.isoformat(timespec="seconds")
         m.fallbacks += 1
         stats.save(self.root, st)
@@ -234,15 +273,8 @@ class Scheduler:
             reason=f"{kind}: cooldown {fb.cooldown_minutes} min",
             until=m.cooldown_until,
         )
-        target = fb.model
-        if (
-            not target
-            or target == handle.model
-            or target not in self.cfg.models
-            or not self.cfg.models[target].enabled
-            or task.privacy not in self.cfg.models[target].privacy
-            or task.fallbacks >= fb.max_fallbacks
-        ):
+        target = self.pick_fallback(handle.model, task.privacy, st)
+        if not target or task.fallbacks >= fb.max_fallbacks:
             self.store.event(
                 task.id,
                 "fallback",
@@ -267,6 +299,20 @@ class Scheduler:
         self.jobs.pop(task.id, None)  # the current job is ending; let dispatch start a new one
         self.dispatch([task.id])
         return True
+
+    def pick_fallback(self, model: str, privacy: str, st: stats.Stats | None = None) -> str | None:
+        """First usable model in fallback.targets(model): enabled, allowed for the privacy level,
+        not itself on cooldown. Same rule for tasks and for council_ask."""
+        st = st or stats.load(self.root)
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        for t in self.cfg.fallback.targets(model):
+            mc = self.cfg.models.get(t)
+            if not mc or not mc.enabled or privacy not in mc.privacy:
+                continue
+            if stats.in_cooldown(st.get(t), now):
+                continue
+            return t
+        return None
 
     async def reject(self, tid: str, reason: str) -> str:
         """Review rejected: attempt+1 (max 3), reason becomes ANSWER.md, re-dispatch."""

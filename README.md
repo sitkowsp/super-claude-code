@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue.svg">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-e07a45.svg">
-  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc15-orange.svg">
+  <img alt="status" src="https://img.shields.io/badge/status-1.0.0--rc16-orange.svg">
 </p>
 
 ```
@@ -219,6 +219,34 @@ the same 5-hour limit) — it saves your interactive session's context and lets 
 parallel, not your quota. The assistants save quota for real. Everything the assistants return is
 treated as untrusted data; the plugin's own hooks stay silent inside `claude -p` executors
 (`COUNCIL_EXECUTOR=1`).
+
+## Two Claude accounts (optional)
+
+If you have seats in two organisations (or two Claude accounts), `claude -p` executors (`fable`,
+`cheap`) can run under either one and **fail over automatically** when one hits its usage limit:
+
+```
+/council:accounts add work2        # registers a profile (its own CLAUDE_CONFIG_DIR), prints the login command
+# run that one command in a terminal: it opens the browser, you pick the org (council never touches credentials)
+/council:accounts verify           # enables fable-work2 / cheap-work2 once the profile is logged in
+/council:accounts                  # table: profile, logged in, account/org, models, cooldown; fallback chains
+```
+
+`add` creates `<model>-<profile>` copies of every Claude executor, disabled until you log in, and puts
+them first in that model's fallback chain (`fallback.by_model`): a usage-limit error on `fable` moves
+the task to `fable-work2` and puts `fable` on cooldown **until the reset time quoted in the error**
+(or 60 min if none). Other providers stay in the chain after that.
+
+What this cannot do: switch **your own chair session**. Claude Code logs in once per config
+directory and the desktop app uses the default one, so when the chair's window ends the plugin shows
+the recipe (`switch_hint` in `/council:accounts`, `/council:offload`, `council_budget`): handoff,
+close the app, `claude auth login` with the other org (or a terminal `claude` with
+`CLAUDE_CONFIG_DIR` of the other profile), reopen — `council_status` returns the handoff.
+
+Policy note, also printed by the command: using several accounts to get around usage limits may
+violate Anthropic's usage policy. Team seats in different organisations each come with their own
+allowance; whether that applies to you is your and your admin's call. The plugin provides the
+mechanism, not the permission.
 
 ## Saving Claude tokens — the point of all this
 

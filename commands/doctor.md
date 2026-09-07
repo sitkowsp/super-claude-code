@@ -4,7 +4,7 @@ description: Check executors (installed / logged in / action), Obsidian vault an
 
 Call `council_doctor`. If it errors, call `council_ping` and show its output (repo root, env). Show the executor table as-is. For every row with an action, print the exact
 command the user should run (install or login — logins open a browser and must be done by the
-user). Report the `chair` line (who assists Claude, who codes — `/council:chair` changes it), the `tools` line (Blender / Unreal paths), the Obsidian line and any routing warnings. If the tool itself is unavailable
+user). Report `claude_profiles` (one row per Claude account for `claude -p` executors; a row with an action means that profile still needs its one-time `claude auth login`), the `chair` line (who assists Claude, who codes — `/council:chair` changes it), the `tools` line (Blender / Unreal paths), the Obsidian line and any routing warnings. If the tool itself is unavailable
 (server not connected), tell the user: the council MCP server did not start — `uv` must be on the
 PATH of the process that launched Claude Code (restart Claude Code after installing uv, or set
 `COUNCIL_UV` to the full path of uv.exe), then run `/mcp` to reconnect.

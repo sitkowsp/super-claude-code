@@ -103,19 +103,25 @@ def shim_target(path: str) -> list[str]:
     return [node, str(Path(path).parent / m.group(1))]
 
 
-def executor_env() -> dict[str, str]:
+def executor_env(config_dir: str | None = None) -> dict[str, str]:
     """Environment for executor processes. COUNCIL_EXECUTOR=1 tells this plugin's own hooks (when
-    the executor is `claude -p`) to stay silent instead of initialising `.council/` there."""
-    return {**os.environ, "COUNCIL_EXECUTOR": "1"}
+    the executor is `claude -p`) to stay silent instead of initialising `.council/` there.
+    `config_dir` selects the Claude account (CLAUDE_CONFIG_DIR) for claude-sub executors."""
+    env = {**os.environ, "COUNCIL_EXECUTOR": "1"}
+    if config_dir:
+        env["CLAUDE_CONFIG_DIR"] = config_dir
+    return env
 
 
-async def _run(argv: list[str], timeout_s: float, cwd: Path | None = None) -> tuple[int, str, str]:
+async def _run(
+    argv: list[str], timeout_s: float, cwd: Path | None = None, config_dir: str | None = None
+) -> tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
         *argv,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         cwd=str(cwd) if cwd else None,
-        env=executor_env(),
+        env=executor_env(config_dir),
     )
     try:
         out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
@@ -219,7 +225,7 @@ class CliAdapter:
         argv = self._exe() + [a.replace("{prompt}", content) for a in _ASK_ARGV[self.cfg.adapter]]
         argv += self._model_args()
         t0 = time.monotonic()
-        code, out, err = await _run(argv, self.timeout_s)
+        code, out, err = await _run(argv, self.timeout_s, config_dir=self.cfg.config_dir)
         if code != 0:
             raise RuntimeError(f"{self.cmd} exited {code}: {err.strip()[:2000]}")
         text = out.strip()
@@ -256,7 +262,7 @@ class CliAdapter:
                         stdout=logf,
                         stderr=asyncio.subprocess.STDOUT,
                         stdin=asyncio.subprocess.DEVNULL,
-                        env=executor_env(),
+                        env=executor_env(self.cfg.config_dir),
                     )
                     code = await wait_with_budget(proc, handle, budget)
                 handle.finish(code, "cancelled" if handle.cancelled else None)

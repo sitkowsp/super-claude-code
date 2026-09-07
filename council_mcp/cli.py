@@ -153,6 +153,10 @@ def _budget_line(root: Path) -> str:
     hint = policy.budget_hint(cfg.delegation, minutes)
     if not hint:
         return ""
+    if any(v for v in cfg.claude_profiles.values()):
+        hint += (
+            " — a second Claude profile is configured: /council:accounts shows the switch recipe"
+        )
     marker = root / ".council" / ".budget_warned"
     last = int(marker.read_text().strip() or 0) if marker.exists() else -999
     if minutes - last < 30:

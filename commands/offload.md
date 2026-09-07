@@ -9,4 +9,6 @@ conversation — into task cards: `implement`/`docs`/`assets`/`chores` cards for
 scope, acceptance commands, `depends_on` where needed. Keep for Claude only: contracts already in
 flight, the final review and merge. Show the cards, get "ok", call `council_plan` then
 `council_dispatch`. Finish with `council_handoff` so the next session (possibly after the window
-resets) can pick up with `/council:review` and `/council:merge`.
+resets) can pick up with `/council:review` and `/council:merge`. If `council_budget.switch_hint`
+mentions a logged-in alternate Claude profile, print that recipe: Claude executors already fail
+over on their own; the user can continue the chair session on the other account after the handoff.

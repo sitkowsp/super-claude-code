@@ -17,9 +17,11 @@
       "url": "${COUNCIL_OLLAMA_URL}", "model": "qwen3:8b", "num_ctx": 16384,  // ollama
       "cmd": "codex", "model": "gpt-6-astra",                                  // CLIs
       "reasoning": "medium", "context_window": 256000,                          // codex only: -c model_reasoning_effort / model_context_window
-      "effort": "medium"                                                        // claude-sub only: claude -p --effort
+      "effort": "medium",                                                       // claude-sub only: claude -p --effort
+      "profile": "work2"                                                        // claude-sub only: key of claude_profiles (CLAUDE_CONFIG_DIR)
     }
   },
+  "claude_profiles": {"default": null, "work2": "~/.claude-profiles/work2"},   // Claude accounts for claude -p executors
   "chair": {"plan_assist": null, "review_assist": null, "coder": "executors"},  // see "Chair options"
   "routing": {
     "by_privacy": {"local-only": ["local"], "internal": ["local", "cheap"], "public": ["codex", "..."]},
@@ -30,7 +32,8 @@
   "memory_file": ".council/MEMORY.md",
   "gates": {"before_review": ["uv run pytest -q"], "after_merge": ["uv run pytest -q"]},
   "trust": {"promote_after": 3, "demote_after": 2, "probation_max_lines": 150, "initial": "probation"},
-  "fallback": {"model": "cheap", "on": ["quota", "no_response", "unavailable"], "cooldown_minutes": 60, "max_fallbacks": 1},
+  "fallback": {"model": "cheap", "on": ["quota", "no_response", "unavailable"], "cooldown_minutes": 60, "max_fallbacks": 1,
+               "by_model": {"fable": ["fable-work2", "codex"]}},              // per-model chain tried before `model`
   "delegation": {"mode": "auto", "min_lines": 40, "min_files": 2, "warn_after_minutes": 210, "session_budget_minutes": 300},
   "obsidian": {"vault": null, "folder": "Council", "mirror": true, "read_context": []}
 }
@@ -109,6 +112,7 @@ the task. Ending without a final `done|blocked|failed` = `failed: no_final_repor
 | `council_merge` | ids?, force? | rebase + merge --no-ff, after-merge gates, MEMORY.md, cleanup |
 | `council_defect` | task, description, lesson? | post-merge defect: trust down, lesson |
 | `council_stats` | – | trust table, counters, LESSONS tail, `savings` (estimate) |
+| `council_accounts` | add?, verify?, remove? | Claude profiles for `claude -p` executors: table (logged in, account/org, models, cooldown), login command for a new profile, enable models of logged-in profiles, fallback chains, chair switch recipe, policy note |
 | `council_savings` | backfill? | estimated Claude tokens saved: total, per model, assistants, method; `backfill=true` counts earlier merges from their commits |
 | `council_why` | task | history with reasons |
 | `council_handoff` | text | write HANDOFF.md (+ Obsidian mirror) |
@@ -146,7 +150,7 @@ council session-start [--root DIR]     what the SessionStart hook runs
 `/council:stop`, `/council:review`, `/council:merge`, `/council:compare`, `/council:why`,
 `/council:defect`, `/council:handoff`, `/council:analyze`, `/council:offload`, `/council:doctor`,
 `/council:setup`, `/council:chair` (show / `coder fable|executors` / `plan-assist <model|off>` /
-`review-assist <model|off>`), `/council:savings [--backfill]` (estimated Claude tokens saved). Subagents: `council-planner`, `council-reviewer`,
+`review-assist <model|off>`), `/council:savings [--backfill]` (estimated Claude tokens saved), `/council:accounts [add <name> | verify | remove <name>]` (second Claude account for executors). Subagents: `council-planner`, `council-reviewer`,
 `council-integrator`.
 
 ## Environment variables
@@ -156,4 +160,5 @@ council session-start [--root DIR]     what the SessionStart hook runs
 | `COUNCIL_REPO_ROOT` | target repo (set by `.mcp.json`) |
 | `COUNCIL_OLLAMA_URL` | Ollama base URL |
 | `COUNCIL_LOG_LEVEL` | server log level (stderr) |
+| `CLAUDE_CONFIG_DIR` | set by council-mcp per `claude -p` executor from `claude_profiles[model.profile]`; selects the Claude account |
 | `COUNCIL_EXECUTOR` | set to `1` by council-mcp for executor processes; the plugin's hooks exit silently when they see it (a `claude -p` executor must not init `.council/` in its workdir) |
