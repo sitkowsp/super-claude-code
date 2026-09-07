@@ -50,7 +50,23 @@ TABLE repo FROM "Council" WHERE council_project SORT file.name
 ```dataview
 TABLE title, model, attempt FROM "Council" WHERE council_task AND state = "blocked"
 ```
+## All tasks (every model, every project)
+```dataview
+TABLE WITHOUT ID link(file.link, council_task) AS task, split(file.folder, "/")[1] AS project, title, state, role, model, attempt
+FROM "Council" WHERE council_task SORT created desc
 ```
+## Tasks per model
+```dataview
+TABLE WITHOUT ID model, length(rows) AS tasks, length(filter(rows, (r) => r.state = "merged")) AS merged
+FROM "Council" WHERE council_task GROUP BY model
+```
+```
+
+The full dashboard shipped with this repo's own vault also has *In progress*, *Failed*, *In review*
+and *Recently merged* sections — same pattern, different `state` filter. Every task note carries
+`council_task`, `title`, `state`, `role`, `model`, `attempt`, `created`, `finished` in its frontmatter,
+and the project name is the folder (`split(file.folder, "/")[1]`), so any Dataview query over
+`"Council"` sees tasks delegated to every model across all projects.
 
 Install the **Dataview** community plugin for the tables and **Claudian** to chat with Claude Code
 from the vault.

@@ -259,7 +259,7 @@ LESSONS, task cards (Dataview frontmatter) and reports into `<vault>/Council/<pr
 - `council_obsidian(kit=true)` installs Claudian slash commands (`/council-status`, `/council-answer`,
   `/council-decide`, `/council-handoff`) in the vault.
 
-Where to find things, Dashboard with Dataview, Phase B details: [docs/obsidian.md](docs/obsidian.md).
+Where to find things, a Dataview dashboard with **All tasks across every model and project** (plus blocked / in review / failed / per-model counts), Phase B details: [docs/obsidian.md](docs/obsidian.md).
 
 ## MCP tools
 
