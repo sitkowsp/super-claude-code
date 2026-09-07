@@ -67,5 +67,7 @@ def test_shim_target_bypasses_cmd(tmp_path: Path) -> None:
     if out == [str(shim)]:  # node not installed on this machine
         return
     assert out[0].lower().endswith(("node", "node.exe"))
-    assert out[1] == str(tmp_path / "node_modules" / "@github" / "copilot" / "npm-loader.js")
+    # the shim's payload path uses Windows separators; on POSIX they survive as literal backslashes
+    got = out[1].replace("\\", "/")
+    assert got == (tmp_path / "node_modules" / "@github" / "copilot" / "npm-loader.js").as_posix()
     assert shim_target("C:/x/agy.exe") == ["C:/x/agy.exe"]
