@@ -52,34 +52,40 @@ TABLE title, model, attempt FROM "Council" WHERE council_task AND state = "block
 ```
 ## All tasks (every model, every project)
 ```dataviewjs
-// Paged table: 10 newest tasks per page, ‹ › buttons. Needs the Dataview plugin (JS queries enabled).
+// Paged table: 10 newest tasks per page, ‹ › buttons. Needs Dataview with JavaScript queries enabled.
 const PAGE = 10;
 const rows = dv.pages('"Council"').where(p => p.council_task)
   .sort(p => p.created, "desc").array();
-const short = (s, n) => (s ?? "").toString().length > n ? s.toString().slice(0, n - 1) + "…" : (s ?? "");
+const short = (s, n) => { s = (s ?? "").toString(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 const day = (d) => d ? d.toString().slice(0, 10) : "";
 const pages = Math.max(1, Math.ceil(rows.length / PAGE));
 let page = 0;
-const box = dv.el("div", "");
+const box = dv.container.createEl("div");
 const render = () => {
   box.empty();
-  const slice = rows.slice(page * PAGE, page * PAGE + PAGE);
-  const nav = box.createEl("div", { cls: "council-nav" });
+  const nav = box.createEl("div");
+  nav.style.margin = "0 0 6px 0";
   const prev = nav.createEl("button", { text: "‹" }); prev.disabled = page === 0;
-  nav.createEl("span", { text: ` ${page + 1} / ${pages} · ${rows.length} tasks ` });
+  nav.createEl("span", { text: `  ${page + 1} / ${pages} · ${rows.length} tasks  ` });
   const next = nav.createEl("button", { text: "›" }); next.disabled = page >= pages - 1;
   prev.onclick = () => { page--; render(); };
   next.onclick = () => { page++; render(); };
-  dv.table(
-    ["task", "project", "title", "state", "model", "created"],
-    slice.map(p => [
-      dv.fileLink(p.file.path, false, p.council_task),
-      p.file.folder.split("/")[1],
-      short(p.title, 48),
-      p.state, p.model, day(p.created),
-    ]),
-    box,
-  );
+  const table = box.createEl("table");
+  const head = table.createEl("thead").createEl("tr");
+  for (const h of ["task", "project", "title", "state", "model", "created"]) head.createEl("th", { text: h });
+  const body = table.createEl("tbody");
+  for (const p of rows.slice(page * PAGE, page * PAGE + PAGE)) {
+    const tr = body.createEl("tr");
+    const cell = (text, nowrap) => { const td = tr.createEl("td", { text }); if (nowrap) td.style.whiteSpace = "nowrap"; return td; };
+    const td = cell("", true);
+    const a = td.createEl("a", { text: p.council_task, cls: "internal-link" });
+    a.setAttribute("href", p.file.path); a.setAttribute("data-href", p.file.path);
+    cell(p.file.folder.split("/")[1], true);
+    cell(short(p.title, 44), false);
+    cell(p.state ?? "", true);
+    cell(p.model ?? "", true);
+    cell(day(p.created), true);
+  }
 };
 render();
 ```
