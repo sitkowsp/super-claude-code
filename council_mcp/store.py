@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -16,9 +17,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from council_mcp.config import Privacy, Role
+from council_mcp.log import get
 
 State = Literal["queued", "running", "blocked", "review", "merged", "failed"]
 ReportStatus = Literal["plan", "progress", "blocked", "done", "failed"]
+log = get(__name__)
+
 EventType = Literal[
     "planned",
     "dispatched",
@@ -186,6 +190,9 @@ class TaskStore:
         self.last_seen_path = self.dir / ".last_seen"
         self.tasks_dir.mkdir(parents=True, exist_ok=True)
         self.reports_dir.mkdir(parents=True, exist_ok=True)
+        # Called after every state transition (server wires this to the Obsidian mirror so the
+        # vault dashboard stays current even for background transitions). Must never raise.
+        self.on_transition: Callable[[Task], None] | None = None
 
     # ---- tasks -------------------------------------------------------------
     def next_id(self) -> str:
@@ -224,6 +231,11 @@ class TaskStore:
         if to in ("review", "merged", "failed"):
             task.finished = now()
         self.save(task)
+        if self.on_transition:
+            try:
+                self.on_transition(task)
+            except Exception as e:  # noqa: BLE001 - a mirror failure must not break the state machine
+                log.warning("on_transition_failed", task=task.id, error=str(e))
         return task
 
     # ---- events ------------------------------------------------------------

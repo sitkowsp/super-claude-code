@@ -98,6 +98,7 @@ class _Runtime:
         if self._sched is None:
             await self.caps()
             store = TaskStore(self.root)
+            store.on_transition = _mirror_on_transition
             git = GitRepo(self.root)
             watcher = Watcher(store, git)
             cfg = self.cfg
@@ -112,7 +113,9 @@ class _Runtime:
 
     @property
     def store(self) -> TaskStore:
-        return TaskStore(self.root)
+        s = TaskStore(self.root)
+        s.on_transition = _mirror_on_transition
+        return s
 
     def reset(self) -> None:
         self._cfg = None
@@ -736,6 +739,12 @@ async def council_handoff(text: str) -> dict[str, Any]:
     p.write_text(text.strip() + "\n", encoding="utf-8")
     mirrored = _mirror()
     return {"path": str(p), "chars": len(text), "obsidian": mirrored}
+
+
+def _mirror_on_transition(task: Task) -> None:
+    """Keep the Obsidian board current: every state change re-mirrors the project notes. Cheap
+    (file copies), quiet on failure; tests and CLI stores don't wire it."""
+    _mirror()
 
 
 def _mirror() -> str | None:

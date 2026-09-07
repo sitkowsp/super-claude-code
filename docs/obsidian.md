@@ -16,7 +16,8 @@ the Claudian plugin, to talk to Claude about it from inside the vault.
   so Claude Code plugin agents and the council MCP server are usable from inside Obsidian
   (details: `research-obsidian-claudian-2026-09.md`).
 - **Mirror.** `council_obsidian(mirror=true)` (terminal: `uv run council obsidian --mirror` in a clone), and automatically after
-  `council_plan`, `council_merge` and `council_handoff`: council writes
+  `council_plan`, `council_merge`, `council_handoff` **and every task state change** (a task that
+  fails in the background leaves *In review* on the dashboard within seconds): council writes
   `<vault>/Council/<project>/` with `MEMORY.md`, `HANDOFF.md`, `LESSONS.md`, `TASKS.md`,
   `REPORT-*.md`, `reports/<id>/…`, and one note per task in `tasks/T-001.md` with YAML
   frontmatter (`council_task`, `state`, `role`, `model`, `attempt`, `tags`) plus a README with a

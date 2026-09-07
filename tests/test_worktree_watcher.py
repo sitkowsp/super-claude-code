@@ -124,3 +124,24 @@ async def test_watcher_invalid_twice_fails(repo: Path) -> None:
     assert store.get("T-002").state == "running"
     await w.handle_report(t, wd / "REPORT.md")
     assert store.get("T-002").state == "failed"
+
+
+def test_transition_fires_callback_and_swallows_errors(tmp_path: Path) -> None:
+    from council_mcp.store import Task, TaskStore
+
+    store = TaskStore(tmp_path)
+    t = Task(id="T-001", title="x", role="implement", privacy="public", goal="g", scope=["a/"])
+    store.save(t)
+    seen: list[tuple[str, str]] = []
+    store.on_transition = lambda task: seen.append((task.id, task.state))
+    store.transition(t, "running")
+    store.transition(t, "failed", reason="boom")
+    assert seen == [("T-001", "running"), ("T-001", "failed")]
+
+    def bad(_task):  # type: ignore[no-untyped-def]
+        raise RuntimeError("mirror down")
+
+    t2 = Task(id="T-002", title="x", role="implement", privacy="public", goal="g", scope=["b/"])
+    store.save(t2)
+    store.on_transition = bad
+    assert store.transition(t2, "running").state == "running"  # error swallowed
