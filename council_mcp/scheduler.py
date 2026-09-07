@@ -331,8 +331,10 @@ class Scheduler:
 
     async def reconcile(self, ids: list[str] | None = None) -> dict[str, list[dict[str, str]]]:
         """Close review-state tasks whose branch content already landed on the base branch by hand
-        (verified byte-identical). No gates, no new commits, no savings counted — the work reached
-        the base outside council, so only the bookkeeping advances."""
+        (verified byte-identical). No gates, no new commits — the work reached the base outside
+        council. Savings ARE counted, from the branch diff (the hand-merge commit is shared across
+        tasks, so a commit diff would be wrong). Each transition re-mirrors Obsidian: task notes,
+        Savings.md and the Dashboard auto block update within seconds."""
         cands = sorted(ids or [t.id for t in self.store.all() if t.state == "review"])
         done: list[dict[str, str]] = []
         skipped: list[dict[str, str]] = []
