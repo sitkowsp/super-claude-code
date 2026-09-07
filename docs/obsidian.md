@@ -31,6 +31,11 @@ the Claudian plugin, to talk to Claude about it from inside the vault.
 
 `vault: null` = auto-detect; set an absolute path to pin one. `mirror: false` turns it off.
 
+`COUNCIL_OBSIDIAN_VAULT=off` (or `none`/`0`/`false`) disables the whole Obsidian layer for that
+process — test drivers and CI set it so throwaway repos never appear in your vault. Independently,
+a repo located under the OS temp directory is never mirrored to an auto-detected vault (only a
+vault pinned in its own council.json counts there).
+
 Resolution order: `obsidian.vault` in council.json → environment variable `COUNCIL_OBSIDIAN_VAULT`
 (a user-level default: one vault for all your council projects) → a vault that already contains the
 repo → the currently open vault.

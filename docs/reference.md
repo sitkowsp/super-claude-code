@@ -161,4 +161,5 @@ council session-start [--root DIR]     what the SessionStart hook runs
 | `COUNCIL_OLLAMA_URL` | Ollama base URL |
 | `COUNCIL_LOG_LEVEL` | server log level (stderr) |
 | `CLAUDE_CONFIG_DIR` | set by council-mcp per `claude -p` executor from `claude_profiles[model.profile]`; selects the Claude account |
+| `COUNCIL_OBSIDIAN_VAULT` | vault for all council projects; `off`/`none`/`0` disables the Obsidian layer (simulations, CI) |
 | `COUNCIL_EXECUTOR` | set to `1` by council-mcp for executor processes; the plugin's hooks exit silently when they see it (a `claude -p` executor must not init `.council/` in its workdir) |

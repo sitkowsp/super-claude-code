@@ -74,6 +74,14 @@ Bump all four places together: `.claude-plugin/plugin.json`, `council_mcp/__init
 
 The Bash tool mangles `\\n` inside heredoc-fed Python patch scripts (it became a real newline twice this project). Write patch scripts to the scratchpad with the Write tool, or use Edit directly.
 
+## Testing notes — Obsidian isolation
+
+Any live driver / simulation that starts council-mcp or `council` CLI against a throwaway repo MUST
+set `COUNCIL_OBSIDIAN_VAULT=off` in the child env (the user-level value would otherwise leak in and
+mirror junk into the real vault — happened twice: chair-repo, acct-repo). Belt-and-braces: since
+rc19 `obsidian.mirror` also refuses repos under the OS temp dir unless the vault is pinned in that
+repo's own council.json.
+
 ## Testing notes
 
 Unit tests use `respx` for Ollama and a `FakeAdapter` for the scheduler; git tests run on a temp repo. The live acceptance script (Codex + Ollama on a throwaway repo) is not in the suite — rerun it manually after adapter changes; the pattern is in DESIGN.md §19.11.

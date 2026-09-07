@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from council_mcp import obsidian
 
 
@@ -62,3 +64,31 @@ def test_mirror_writes_dashboard(tmp_path: Path) -> None:
     assert obsidian.mirror(repo, cfg) is not None
     assert (vault / "Dashboard.md").exists()
     assert "| 1 | 0 | 0 | 0 | 0 | 0 |" in (vault / "Dashboard.md").read_text(encoding="utf-8")
+
+
+def test_env_off_disables_vault_and_temp_repos_do_not_mirror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tempfile
+
+    vault = tmp_path / "V"
+    (vault / ".obsidian").mkdir(parents=True)
+    cfg = obsidian.ObsidianConfig(vault=str(vault), folder="Council")
+    # kill-switch beats even an explicit council.json vault
+    monkeypatch.setenv(obsidian.ENV_VAULT, "off")
+    assert obsidian.obsidian_disabled()
+    assert obsidian.resolve_vault(cfg, tmp_path) is None
+    assert obsidian.mirror(tmp_path, cfg) is None
+    monkeypatch.delenv(obsidian.ENV_VAULT)
+    # temp-dir repo: env/auto vault refused, pinned vault allowed
+    repo = Path(tempfile.mkdtemp(prefix="council-sim-")).resolve()
+    try:
+        (repo / ".council").mkdir(parents=True)
+        monkeypatch.setenv(obsidian.ENV_VAULT, str(vault))
+        assert obsidian.mirror(repo, obsidian.ObsidianConfig(folder="Council")) is None
+        assert not (vault / "Council" / repo.name).exists()
+        assert obsidian.mirror(repo, cfg) is not None  # cfg.vault pinned -> deliberate
+    finally:
+        import shutil
+
+        shutil.rmtree(repo, ignore_errors=True)

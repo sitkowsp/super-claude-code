@@ -80,9 +80,30 @@ log = get(__name__)
 ENV_VAULT = "COUNCIL_OBSIDIAN_VAULT"  # user-level default: one vault for all council projects
 
 
+OFF_VALUES = ("off", "none", "0", "false")
+
+
+def obsidian_disabled() -> bool:
+    """COUNCIL_OBSIDIAN_VAULT=off (none/0/false) is a kill-switch: no vault is resolved and nothing
+    is mirrored, regardless of council.json. Test drivers and simulations set it so throwaway repos
+    never leave a trace in the user's real vault."""
+    return os.environ.get(ENV_VAULT, "").strip().lower() in OFF_VALUES
+
+
+def _in_temp(repo_root: Path) -> bool:
+    import tempfile
+
+    try:
+        return repo_root.resolve().is_relative_to(Path(tempfile.gettempdir()).resolve())
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def resolve_vault(cfg: ObsidianConfig, repo_root: Path) -> Path | None:
     """Order: council.json `vault` → env COUNCIL_OBSIDIAN_VAULT → vault containing the repo →
-    the open vault."""
+    the open vault. `COUNCIL_OBSIDIAN_VAULT=off` disables all of it."""
+    if obsidian_disabled():
+        return None
     for candidate in (cfg.vault, os.environ.get(ENV_VAULT)):
         if candidate:
             p = Path(os.path.expandvars(candidate)).expanduser()
@@ -105,9 +126,15 @@ def _slug(s: str) -> str:
 
 
 def mirror(repo_root: Path, cfg: ObsidianConfig, project: str | None = None) -> Path | None:
-    """Copy council state into the vault as notes. Returns the target folder or None."""
+    """Copy council state into the vault as notes. Returns the target folder or None. A repo under
+    the OS temp directory (throwaway test/simulation repos) is mirrored only when the vault is
+    pinned explicitly in its own council.json — an auto-detected or env-level vault would collect
+    junk projects from every simulation."""
     vault = resolve_vault(cfg, repo_root)
     if not vault or not cfg.mirror:
+        return None
+    if _in_temp(repo_root) and not cfg.vault:
+        log.info("mirror_skipped_temp_repo", repo=str(repo_root))
         return None
     if repo_root.resolve().is_relative_to(vault.resolve()):
         # repo lives inside the vault: .council/*.md is already visible — write only an index note
@@ -332,6 +359,7 @@ def status(cfg: ObsidianConfig, repo_root: Path) -> dict[str, object]:
         "obsidian_installed": bool(config_file() and config_file().exists()),  # type: ignore[union-attr]
         "vaults": [v["path"] for v in vaults],
         "vault": str(vault) if vault else None,
+        "disabled": obsidian_disabled(),
         "repo_inside_vault": bool(vault and repo_root.resolve().is_relative_to(vault.resolve())),
         "claudian": has_claudian(vault) if vault else False,
         "mirror": cfg.mirror,
