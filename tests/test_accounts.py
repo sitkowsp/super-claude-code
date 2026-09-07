@@ -72,6 +72,7 @@ def test_add_profile_creates_alt_models_and_chains(
         return 0, '{"loggedIn": true, "email": "u@example.com", "orgName": "Org B"}'
 
     monkeypatch.setattr(setup, "_run_env", fake_status)
+    monkeypatch.setattr(setup, "_which", lambda _c: "claude")  # CI runners have no claude on PATH
     rows = asyncio.run(setup.profiles_status(cfg, tmp_path))
     alt = [r for r in rows if r["profile"] == "alt"][0]
     assert alt["org"] == "Org B"

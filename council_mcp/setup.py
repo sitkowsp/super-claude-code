@@ -448,7 +448,7 @@ def _ue_version_key(path: Path) -> tuple[int, ...]:
 def _drive_roots() -> list[Path]:
     """Fixed local disks only. Network / removable / optical drives are skipped: a glob over a
     mapped share can block for minutes (this hung the test suite once)."""
-    if os.name == "nt":
+    if sys.platform == "win32":
         try:
             import ctypes
 
@@ -465,7 +465,7 @@ def _drive_roots() -> list[Path]:
 
 def _ue_registry() -> list[Path]:
     """`HKLM\\SOFTWARE\\EpicGames\\Unreal Engine\\<ver>\\InstalledDirectory` (Windows only)."""
-    if os.name != "nt":
+    if sys.platform != "win32":
         return []
     out: list[Path] = []
     try:

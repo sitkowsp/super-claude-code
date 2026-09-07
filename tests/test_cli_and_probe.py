@@ -61,7 +61,7 @@ def test_shim_target_bypasses_cmd(tmp_path: Path) -> None:
 
     shim = tmp_path / "copilot.cmd"
     shim.write_text(
-        '@ECHO off\r\n"%_prog%"  "%dp0%\node_modules\@github\copilot\npm-loader.js" %*\r\n'
+        '@ECHO off\r\n"%_prog%"  "%dp0%\\node_modules\\@github\\copilot\\npm-loader.js" %*\r\n'
     )
     out = shim_target(str(shim))
     if out == [str(shim)]:  # node not installed on this machine
