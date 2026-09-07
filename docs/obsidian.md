@@ -117,7 +117,10 @@ and *Recently merged* sections — same pattern, different `state` filter. Every
 and the project name is the folder (`split(file.folder, "/")[1]`), so any Dataview query over
 `"Council"` sees tasks delegated to every model across all projects.
 
-Install the **Dataview** community plugin for the tables and **Claudian** to chat with Claude Code
+The vault-root `Dashboard.md` also gets a **Council status (auto)** section between
+`<!-- council:auto -->` markers: one row per project (state counts, estimated tokens saved, last
+note update), rewritten by every mirror — so it is current even without Dataview. Keep your own
+content outside the markers. Install the **Dataview** community plugin for the tables and **Claudian** to chat with Claude Code
 from the vault.
 
 ## If you do not have Obsidian or Claudian

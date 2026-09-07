@@ -13,9 +13,12 @@ import os
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from council_mcp.log import get
 
 
 class ObsidianConfig(BaseModel):
@@ -73,6 +76,7 @@ def has_claudian(vault: Path) -> bool:
     return False
 
 
+log = get(__name__)
 ENV_VAULT = "COUNCIL_OBSIDIAN_VAULT"  # user-level default: one vault for all council projects
 
 
@@ -112,6 +116,7 @@ def mirror(repo_root: Path, cfg: ObsidianConfig, project: str | None = None) -> 
         _write_index(
             target / f"{_slug(project or repo_root.name)}.md", repo_root, vault, inline=False
         )
+        update_dashboard(vault, cfg.folder)
         return target
     target = vault / cfg.folder / _slug(project or repo_root.name)
     (target / "tasks").mkdir(parents=True, exist_ok=True)
@@ -171,7 +176,92 @@ def mirror(repo_root: Path, cfg: ObsidianConfig, project: str | None = None) -> 
                 shutil.copy2(f, dst / f.name)
     _write_savings(target / "Savings.md", repo_root)
     _write_index(target / "README.md", repo_root, vault, inline=True)
+    update_dashboard(vault, cfg.folder)
     return target
+
+
+DASH_START = "<!-- council:auto -->"
+DASH_END = "<!-- /council:auto -->"
+_STATES = ("queued", "running", "blocked", "review", "merged", "failed")
+
+
+def _dashboard_block(vault: Path, folder: str) -> str:
+    """Per-project state counts + savings, read back from the mirrored notes — so the block covers
+    every project, not only the one currently mirroring."""
+    from council_mcp import __version__
+
+    rows: list[str] = []
+    base = vault / folder
+    for proj in sorted(p for p in base.iterdir() if p.is_dir()) if base.exists() else []:
+        counts = dict.fromkeys(_STATES, 0)
+        last = 0.0
+        for note in proj.glob("tasks/*.md"):
+            m = re.search(
+                r'^state: "(\w+)"', note.read_text(encoding="utf-8", errors="replace"), re.M
+            )
+            if m and m.group(1) in counts:
+                counts[m.group(1)] += 1
+            last = max(last, note.stat().st_mtime)
+        if not sum(counts.values()):
+            continue
+        saved = "-"
+        sv = proj / "Savings.md"
+        if sv.exists():
+            m = re.search(
+                r"^tokens_saved: (\d+)", sv.read_text(encoding="utf-8", errors="replace"), re.M
+            )
+            if m:
+                saved = f"{int(m.group(1)):,}"
+        stamp = datetime.fromtimestamp(last).strftime("%Y-%m-%d %H:%M") if last else "-"
+        rows.append(
+            f"| [[{folder}/{proj.name}/README\|{proj.name}]] | "
+            + " | ".join(str(counts[s]) for s in _STATES)
+            + f" | {saved} | {stamp} |"
+        )
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return "\n".join(
+        [
+            DASH_START,
+            "## Council status (auto)",
+            "",
+            f"_council {__version__} · updated {now} · rewritten on every mirror and task state "
+            "change; do not edit between the markers._",
+            "",
+            "| project | queued | running | blocked | review | merged | failed "
+            "| tokens saved (est.) | last note update |",
+            "|---|---|---|---|---|---|---|---|---|",
+            *(rows or ["| (no tasks yet) | | | | | | | | |"]),
+            DASH_END,
+        ]
+    )
+
+
+def update_dashboard(vault: Path, folder: str) -> Path | None:
+    """Upsert the auto block in `<vault>/Dashboard.md` (created with a pointer to the docs template
+    when missing). Never raises."""
+    try:
+        block = _dashboard_block(vault, folder)
+        dash = vault / "Dashboard.md"
+        if dash.exists():
+            text = dash.read_text(encoding="utf-8")
+            if DASH_START in text and DASH_END in text:
+                pre, _, rest = text.partition(DASH_START)
+                _, _, post = rest.partition(DASH_END)
+                text = pre + block + post
+            else:
+                text = text.rstrip() + "\n\n" + block + "\n"
+        else:
+            text = (
+                "---\ntags: [council, dashboard]\n---\n# Council — all projects\n\n"
+                + block
+                + "\n\n> Dataview boards (blocked / in review / all tasks with paging): "
+                "template in the plugin's docs/obsidian.md.\n"
+            )
+        dash.write_text(text, encoding="utf-8")
+        return dash
+    except Exception as e:  # noqa: BLE001 - dashboard upkeep must never break a mirror
+        log.warning("dashboard_update_failed", error=str(e))
+        return None
 
 
 def _write_savings(path: Path, repo_root: Path) -> None:
