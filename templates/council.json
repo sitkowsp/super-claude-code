@@ -1,6 +1,7 @@
 {
   "version": 1,
   "max_parallel": 3,
+  "probe_ttl_hours": 24,
   "budget": {
     "soft_minutes": 20,
     "hard_minutes": 25,

@@ -129,6 +129,10 @@ class CouncilConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Literal[1] = 1
     max_parallel: Annotated[int, Field(ge=1)] = 3
+    # Availability-probe freshness (DESIGN §5.7): capabilities.json older than this many hours is
+    # re-probed before the next dispatch — first use of the day refreshes the model list per
+    # provider. 0 = probe only once per server process (the pre-rc25 behaviour).
+    probe_ttl_hours: Annotated[int, Field(ge=0)] = 24
     budget: Budget = Field(default_factory=Budget)
     models: dict[str, ModelConfig]
     routing: Routing = Field(default_factory=Routing)

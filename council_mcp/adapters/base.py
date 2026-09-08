@@ -26,7 +26,8 @@ class Capabilities(BaseModel):
     version: str | None = None
     path: str | None = None
     flags: list[str] = Field(default_factory=list)  # detected from --help
-    models: list[str] = Field(default_factory=list)  # ollama: /api/tags
+    models: list[str] = Field(default_factory=list)  # ollama: /api/tags; CLIs: list subcommand
+    efforts: list[str] = Field(default_factory=list)  # reasoning-effort values the CLI accepts
     error: str | None = None
 
 

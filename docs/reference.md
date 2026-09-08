@@ -6,6 +6,7 @@
 {
   "version": 1,
   "max_parallel": 3,                       // tasks running at once (all models)
+  "probe_ttl_hours": 24,                   // re-probe model availability when capabilities.json is older (0 = once per server)
   "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
   "models": {
     "<name>": {
@@ -43,6 +44,20 @@
 Routing rule: a card with `role` R and `privacy` P goes to the first model in `by_role[R]` that is
 also in `by_privacy[P]`, is enabled, and passed the probe. No intersection = the plan is rejected.
 `assigned_to` on a card overrides routing but still must respect privacy.
+
+### Daily availability probe (`probe_ttl_hours`, default 24)
+
+`.council/capabilities.json` records when every provider was last probed. Before each dispatch the
+server checks that age: older than `probe_ttl_hours` → the full probe reruns (first use of the day),
+so routing and the complexity-based tier/effort choice always work from a current picture. A model
+that recovered since the last probe comes back automatically (its `enabled` is restored from
+council.json before re-probing). The probe also asks each CLI to **list its models** (`agy models`
+works today; CLIs without a list command fail silently and your configured `model` stays
+authoritative) and records the **reasoning-effort values** the CLI accepts. `council_models` shows
+the probe age, per-model `available_models` + `efforts`, and warns when a configured model is not in
+a non-empty discovered list; `council_probe` forces a refresh now; the SessionStart hook prints a
+one-line hint when the probe is stale. `0` disables the daily refresh (probe once per server
+process).
 
 Placeholders `${ENV_VAR}` are expanded at load time; never put secrets in the file.
 

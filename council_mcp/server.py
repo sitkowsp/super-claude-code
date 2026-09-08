@@ -88,12 +88,26 @@ class _Runtime:
                 raise ToolError(f"invalid .council/council.json in {self.root}: {e}") from e
         return self._cfg
 
-    async def caps(self) -> probe.CapabilitiesFile:
-        if self._caps is None:
-            self._caps = await probe.probe_all(self.cfg)
-            probe.write(self._caps, self.root)
-            log.info("probed", models={k: v.enabled for k, v in self._caps.models.items()})
-        return self._caps
+    async def caps(self, refresh: bool = False) -> probe.CapabilitiesFile:
+        """Capabilities with the daily freshness rule (probe_ttl_hours): a stale in-memory copy or
+        file triggers a full re-probe, so a long-lived session checks the provider model lists
+        again before delegating. `refresh=True` forces a re-probe (council_probe)."""
+        if refresh:
+            self._caps = None
+        caps, reprobed = await probe.ensure_fresh(
+            self.cfg, self.root, None if refresh else self._caps
+        )
+        if refresh and not reprobed:  # a fresh file on disk must not swallow an explicit re-probe
+            caps = await probe.probe_all(self.cfg)
+            probe.write(caps, self.root)
+            reprobed = True
+        if reprobed or self._caps is not caps:
+            log.info(
+                "probed" if reprobed else "capabilities_loaded",
+                models={k: v.enabled for k, v in caps.models.items()},
+            )
+        self._caps = caps
+        return caps
 
     async def sched(self) -> Scheduler:
         if self._sched is None:
@@ -177,17 +191,30 @@ async def council_models() -> dict[str, Any]:
     """List configured models with adapter, availability, roles and privacy levels."""
     cfg = rt.cfg
     caps = await rt.caps()
+
+    def _warn(name: str, m: Any) -> str | None:
+        c = caps.models.get(name)
+        if c and c.models and m.model and m.model not in c.models:
+            return f"configured model '{m.model}' not in the CLI's discovered list"
+        return None
+
     return {
         "version": __version__,
         "repo_root": str(rt.root),
         "probed_at": caps.probed_at,
+        "probe_age_hours": round(probe.age_hours(caps), 1),
+        "probe_ttl_hours": cfg.probe_ttl_hours,
         "models": {
             name: {
                 "adapter": m.adapter,
                 "enabled": m.enabled,
                 "roles": m.roles,
                 "privacy": m.privacy,
+                "tier": m.tier,
                 "backend": m.model or m.cmd,
+                "available_models": caps.models[name].models if name in caps.models else [],
+                "efforts": caps.models[name].efforts if name in caps.models else [],
+                "warning": _warn(name, m),
                 "error": caps.models[name].error if name in caps.models else None,
             }
             for name, m in cfg.models.items()
@@ -235,9 +262,10 @@ async def council_ask(model: str, prompt: str, files: list[str] | None = None) -
 
 @_tool
 async def council_probe() -> dict[str, Any]:
-    """Re-run the availability probe and rewrite .council/capabilities.json."""
+    """Re-run the availability probe now and rewrite .council/capabilities.json. (It also refreshes
+    itself automatically before a dispatch when older than `probe_ttl_hours`, default 24 h.)"""
     rt.reset()
-    return (await rt.caps()).model_dump()
+    return (await rt.caps(refresh=True)).model_dump()
 
 
 # ---- Phase 1 -------------------------------------------------------------------
@@ -415,6 +443,7 @@ async def council_dispatch(ids: list[str] | None = None) -> dict[str, Any]:
     """Start queued tasks (all queued if ids omitted). Each gets branch council/<id>, an isolated
     workdir without .git or never_share files, TASK.md, and its executor process.
     Returns started ids."""
+    await rt.caps()  # daily freshness gate: stale capabilities re-probe before any delegation
     sched = await rt.sched()
     store = rt.store
     ids = ids or [t.id for t in store.all() if t.state == "queued"]

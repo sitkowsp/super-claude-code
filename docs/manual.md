@@ -40,7 +40,9 @@ queued ── /council:run ──▶ running ──▶ review ── /council:re
   `chair.plan_assist` on, an assistant model drafts the cards first. Nothing runs until you say ok.
 - `/council:run` — dispatch queued cards (branch + isolated workdir + executor per card). Each card
   is complexity-scored on the way out: simple → cheaper model + `low` effort, complex → top model +
-  `high` effort (`delegation.auto_effort`; `/council:why` explains the pick).
+  `high` effort (`delegation.auto_effort`; `/council:why` explains the pick). A stale availability
+  probe (older than `probe_ttl_hours`, default 24 h) reruns automatically first, so the model choice
+  works from today's list of what each provider can run.
 - `/council:status` — board, new events, HANDOFF.md; also applies answers from the Obsidian inbox.
 - `/council:answer T-001 <text>` — answer a blocked task and resume it.
 - `/council:stop T-001` — kill the executor, mark failed, keep the worktree for inspection.

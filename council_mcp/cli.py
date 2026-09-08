@@ -394,6 +394,15 @@ def session_start(root: Path, plugin_dir: Path) -> str:
         cfg = load(root)
         checks = _asyncio.run(setup.check_all(cfg))
         lines.append(setup.brief(checks))
+        from council_mcp import probe as _probe
+
+        caps = _probe.load(root)
+        if caps and not _probe.is_fresh(caps, cfg.probe_ttl_hours):
+            lines.append(
+                f"[council] model availability last probed {int(_probe.age_hours(caps))}h ago — "
+                "the first dispatch re-probes every provider (probe_ttl_hours="
+                f"{cfg.probe_ttl_hours})"
+            )
         ready = [c.model for c in checks if c.installed and c.logged_in is not False and c.enabled]
         rem = policy.reminder(cfg.delegation, ready)
         if rem:

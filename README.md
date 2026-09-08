@@ -38,6 +38,7 @@ windows. `council` fixes that:
 - 🔒 **Secrets never leave.** Executors get a `git archive` export without `.git` and without your `never_share` files; everything they write is data, not instructions.
 - 🔁 **Fallback built in.** Out of quota? Not responding? The task is re-queued on the fallback model and the failing model gets a cooldown.
 - 🎚️ **Right-sized executors.** Every dispatch scores the card's complexity (deterministic: scope, role, keywords, criteria, retry count) and picks the tier and effort to match — a typo fix runs on the cheap model at `low` effort, a refactor goes to GPT-6 Astra / Fable at `high`. `council_why` shows the reasoning; `delegation.auto_effort: false` turns it off.
+- 📡 **Always-current model list.** Before delegating, a stale availability probe (older than `probe_ttl_hours`, default 24 h) reruns automatically — per provider: installed, logged in, discovered model list where the CLI can list one (Ollama tags, `agy models`), and the reasoning-effort values it accepts. `council_models` shows it all, with a warning when your configured model is not on the discovered list.
 - 🪑 **Chair options.** Let GPT-6 Astra draft the plan and summarise reviews for Claude (`/council:chair plan-assist codex`), or let Claude Fable 5.1 write the code at `medium` effort (`/council:chair coder fable`). Defaults stay as they are; see "Choose your chair setup".
 - 📓 **Obsidian as the project's memory.** Plans, decisions, task cards and reports are mirrored into your vault; with the Claudian plugin the vault talks back.
 

@@ -84,6 +84,45 @@ _APPROVAL: dict[str, list[list[str]]] = {
 # Adapters that read AGENTS.md/GEMINI.md themselves; others get the Charter inline in the prompt.
 _READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot", "grok"}
 
+# Model discovery: candidate list subcommands per adapter, tried in order during probe. Most of
+# these CLIs cannot list models today — every candidate runs with a short timeout and fails
+# silently, so the configured model stays authoritative when discovery yields nothing.
+_LIST_MODELS: dict[str, list[list[str]]] = {
+    "codex": [["models", "list"], ["models"]],
+    "copilot": [["models"], ["models", "list"]],
+    "gemini": [["models", "list"], ["models"]],
+    "antigravity": [["models"]],
+    "grok": [["models"]],
+    "claude-sub": [],  # no list command; aliases (sonnet/opus/haiku) and full ids are accepted
+}
+# Reasoning-effort values per adapter (static per CLI contract; claude-sub gated on the probed
+# --effort flag). complexity.assess only ever picks low/medium/high, so both sets cover it.
+_EFFORTS: dict[str, list[str]] = {
+    "codex": ["low", "medium", "high", "xhigh", "max"],  # -c model_reasoning_effort=…
+    "claude-sub": ["low", "medium", "high", "xhigh", "max"],  # --effort
+}
+
+_MODEL_ID_RE = re.compile(r"[a-z0-9][a-z0-9._:/-]{2,63}", re.I)
+_NOT_A_MODEL = {"usage", "available", "models", "model", "name", "id", "error", "commands"}
+
+
+def parse_model_list(text: str) -> list[str]:
+    """First token per line that looks like a model id (must carry a digit or separator, so prose
+    and headers drop out); flags and known header words skipped. Capped at 50 entries."""
+    out: list[str] = []
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts or parts[0].startswith("-"):
+            continue
+        tok = parts[0].strip("*•").rstrip(",:")
+        if not _MODEL_ID_RE.fullmatch(tok) or not re.search(r"[\d:./_-]", tok):
+            continue
+        if tok.lower() in _NOT_A_MODEL:
+            continue
+        if tok not in out:
+            out.append(tok)
+    return out[:50]
+
 
 _SHIM_RE = re.compile(r'"%dp0%\\([^"]+\.[cm]?js)"')
 
@@ -179,6 +218,18 @@ class CliAdapter:
             return Capabilities(
                 name=self.name, adapter=self.cfg.adapter, enabled=False, path=path, error=str(e)
             )
+        efforts = list(_EFFORTS.get(self.cfg.adapter, []))
+        if self.cfg.adapter == "claude-sub" and "--effort" not in self.flags:
+            efforts = []
+        models: list[str] = []
+        for sub in _LIST_MODELS.get(self.cfg.adapter, []):
+            try:
+                code, o, _ = await _run([*exe, *sub], 15)
+            except Exception:  # noqa: BLE001 - discovery is best-effort, config stays the source
+                break
+            if code == 0 and (found := parse_model_list(o)):
+                models = found
+                break
         return Capabilities(
             name=self.name,
             adapter=self.cfg.adapter,
@@ -186,6 +237,8 @@ class CliAdapter:
             version=version,
             path=path,
             flags=self.flags,
+            models=models,
+            efforts=efforts,
         )
 
     def _model_args(self, effort: str | None = None) -> list[str]:
