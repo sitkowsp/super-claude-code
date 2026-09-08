@@ -37,6 +37,7 @@ _ASK_ARGV: dict[str, list[str]] = {
     "copilot": ["-p", "{prompt}", "--silent"],
     "grok": ["-p", "{prompt}", "--output-format", "plain"],
     "claude-sub": ["-p", "{prompt}", "--output-format", "text"],
+    "cursor": ["-p", "{prompt}", "--output-format", "text"],
 }
 
 # Task run: argv template; {prompt} substituted; {workdir} substituted. Preferred approval flags
@@ -65,6 +66,8 @@ _RUN_ARGV: dict[str, list[str]] = {
     "copilot": ["-p", "{prompt}", "--silent", "-C", "{workdir}", "--add-dir", "{workdir}"],
     "grok": ["-p", "{prompt}", "--cwd", "{workdir}", "--output-format", "plain"],
     "claude-sub": ["-p", "{prompt}", "--output-format", "text"],
+    # cursor: no cwd flag needed — the process starts in the task workdir (cwd=workdir)
+    "cursor": ["-p", "{prompt}", "--output-format", "text"],
 }
 _APPROVAL: dict[str, list[list[str]]] = {
     "gemini": [["--approval-mode", "yolo"], ["--yolo"]],
@@ -72,6 +75,7 @@ _APPROVAL: dict[str, list[list[str]]] = {
     "codex": [["-c", "approval_policy=never"]],
     "copilot": [["--allow-all-tools", "--allow-all-paths"], ["--allow-all"]],
     "grok": [["--always-approve"], ["--permission-mode", "bypassPermissions"], ["--yolo"]],
+    "cursor": [["--force"], ["--yolo"]],
     "claude-sub": [
         [
             "--permission-mode",
@@ -82,7 +86,8 @@ _APPROVAL: dict[str, list[list[str]]] = {
     ],
 }
 # Adapters that read AGENTS.md/GEMINI.md themselves; others get the Charter inline in the prompt.
-_READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot", "grok"}
+# cursor reads AGENTS.md and CLAUDE.md from the workdir natively.
+_READS_CHARTER_FILE = {"codex", "gemini", "antigravity", "copilot", "grok", "cursor"}
 
 # Model discovery: candidate list subcommands per adapter, tried in order during probe. Most of
 # these CLIs cannot list models today — every candidate runs with a short timeout and fails
@@ -94,6 +99,7 @@ _LIST_MODELS: dict[str, list[list[str]]] = {
     "antigravity": [["models"]],
     "grok": [["models"]],
     "claude-sub": [],  # no list command; aliases (sonnet/opus/haiku) and full ids are accepted
+    "cursor": [["models"]],  # `agent models` lists the account's models
 }
 # Reasoning-effort values per adapter (static per CLI contract; claude-sub gated on the probed
 # --effort flag). complexity.assess only ever picks low/medium/high, so both sets cover it.
@@ -244,7 +250,7 @@ class CliAdapter:
     def _model_args(self, effort: str | None = None) -> list[str]:
         """`effort` (from complexity.assess at dispatch) overrides the static cfg effort/reasoning
         for adapters that have such a knob; ask() and probes keep the cfg defaults."""
-        if self.cfg.model and self.cfg.adapter == "antigravity":
+        if self.cfg.model and self.cfg.adapter in ("antigravity", "cursor"):
             return ["--model", self.cfg.model]
         if (
             self.cfg.model

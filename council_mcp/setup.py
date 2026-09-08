@@ -78,6 +78,15 @@ CATALOG: dict[str, Executor] = {
         "grok login   (browser OAuth; --device-auth for headless)",
         npm_package="@xai-official/grok",
     ),
+    "cursor": Executor(
+        "cursor",
+        "Cursor CLI (Cursor subscription or CURSOR_API_KEY)",
+        "cursor-agent",
+        "curl https://cursor.com/install -fsS | bash   "
+        "(PowerShell: irm https://cursor.com/install | iex)",
+        "cursor-agent login   (browser)  or  export CURSOR_API_KEY=...",
+        notes="one CLI, many models (composer/gpt/opus/gemini/grok); `cursor-agent models` lists",
+    ),
     "claude-sub": Executor(
         "claude-sub",
         "Claude Code as cheap executor",
@@ -140,6 +149,9 @@ async def login_state(adapter: str, cmd_path: str | None) -> bool | None:
         return (home / ".grok" / "auth.json").exists()
     if adapter == "gemini":
         return bool(os.environ.get("GEMINI_API_KEY")) or None
+    if adapter == "cursor":
+        # API key is definite; a subscription login leaves no documented cheap check → None
+        return bool(os.environ.get("CURSOR_API_KEY")) or None
     if adapter == "claude-sub":
         return True if cmd_path else None
     return None

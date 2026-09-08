@@ -10,7 +10,7 @@
   "budget": {"soft_minutes": 20, "hard_minutes": 25, "max_turns": 30},
   "models": {
     "<name>": {
-      "adapter": "ollama | codex | copilot | antigravity | gemini | grok | claude-sub",
+      "adapter": "ollama | codex | copilot | antigravity | gemini | grok | claude-sub | cursor",
       "enabled": true,
       "max_parallel": 1,
       "roles": ["implement", "refactor", "docs", "assets", "3d", "review", "chores", "data"],
@@ -58,6 +58,16 @@ the probe age, per-model `available_models` + `efforts`, and warns when a config
 a non-empty discovered list; `council_probe` forces a refresh now; the SessionStart hook prints a
 one-line hint when the probe is stale. `0` disables the daily refresh (probe once per server
 process).
+
+### Cursor adapter (optional)
+
+`"adapter": "cursor"`, binary `cursor-agent` (installed by Cursor's own script, not npm). Runs
+headless with `-p … --output-format text --force`, reads `AGENTS.md`/`CLAUDE.md` from the workdir
+natively, and picks its backend via `"model"` (e.g. `composer-2.5`, `gpt-5.6`, `opus-5`) — there is
+no separate effort knob, so the complexity automation influences it only through tier-based model
+choice. `cursor-agent models` is used by the probe to discover the account's model list. The
+template ships it `enabled: false`; `/council:doctor` prints the install command when the binary is
+missing. Executor run verified as detection-only (no Cursor subscription on the dev machine).
 
 Placeholders `${ENV_VAR}` are expanded at load time; never put secrets in the file.
 

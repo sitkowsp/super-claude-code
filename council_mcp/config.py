@@ -31,7 +31,9 @@ Role = Literal[
 ]
 Reasoning = Literal["low", "medium", "high", "xhigh", "max"]
 Privacy = Literal["public", "internal", "local-only"]
-AdapterName = Literal["ollama", "gemini", "antigravity", "codex", "copilot", "grok", "claude-sub"]
+AdapterName = Literal[
+    "ollama", "gemini", "antigravity", "codex", "copilot", "grok", "claude-sub", "cursor"
+]
 
 _ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 

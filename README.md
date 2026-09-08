@@ -167,6 +167,10 @@ you open the clone itself as a project that entry shows as skipped — expected.
 - **Grok Build** — `npm i -g @xai-official/grok`, `grok login`
 - **Google Antigravity** `agy` — from https://antigravity.google, run `agy` once (generates PNGs; the
   successor to Gemini CLI for individual accounts — Gemini CLI itself now needs an API key)
+- **Cursor CLI** *(optional, disabled by default)* — `curl https://cursor.com/install -fsS | bash`
+  (PowerShell: `irm https://cursor.com/install | iex`), then `cursor-agent login` or `CURSOR_API_KEY`;
+  one CLI, many models (Composer, GPT, Opus, Gemini, Grok) — `cursor-agent models` feeds the daily
+  probe. Detected automatically by `/council:doctor`; enable with `"enabled": true` on the `cursor` model
 - **Claude** as a cheap executor and fallback — `claude -p --model haiku`
 
 ## Quick start

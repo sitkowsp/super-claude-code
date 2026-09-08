@@ -126,6 +126,22 @@
         "public"
       ]
     },
+    "cursor": {
+      "adapter": "cursor",
+      "cmd": "cursor-agent",
+      "enabled": false,
+      "model": "composer-2.5",
+      "max_parallel": 2,
+      "roles": [
+        "implement",
+        "refactor",
+        "docs",
+        "review"
+      ],
+      "privacy": [
+        "public"
+      ]
+    },
     "fable": {
       "adapter": "claude-sub",
       "cmd": "claude",
@@ -159,6 +175,7 @@
         "codex",
         "antigravity",
         "copilot",
+        "cursor",
         "gemini",
         "grok",
         "cheap",
@@ -171,6 +188,7 @@
         "codex",
         "antigravity",
         "copilot",
+        "cursor",
         "gemini",
         "local",
         "grok",
@@ -180,6 +198,7 @@
         "codex",
         "antigravity",
         "copilot",
+        "cursor",
         "fable"
       ],
       "assets": [
@@ -192,6 +211,7 @@
       "docs": [
         "copilot",
         "antigravity",
+        "cursor",
         "gemini",
         "cheap",
         "local"
@@ -200,6 +220,7 @@
         "local",
         "antigravity",
         "copilot",
+        "cursor",
         "codex",
         "gemini",
         "grok",
@@ -223,6 +244,7 @@
       "local",
       "antigravity",
       "copilot",
+      "cursor",
       "codex",
       "gemini",
       "grok"
